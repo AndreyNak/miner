@@ -1,0 +1,178 @@
+ /* ============================= 8. ОТРИСОВКА ============================= */
+
+// Текстуры блоков ("шум") рисуются один раз: 4 варианта на каждый тип блока
+
+let blockTextures;
+
+
+function createBlockTextures() {
+    blockTextures = BLOCK_TYPES.map((type, typeIndex) => {
+        if (!type) return null;
+        return [0, 1, 2, 3].map(variant => {
+        const tile = document.createElement('canvas');
+        tile.width = tile.height = TILE_SIZE;
+        const tileCtx = tile.getContext('2d');
+        for (let a = 0; a < 5; a++) for (let b = 0; b < 5; b++) {
+            tileCtx.fillStyle = type.colors[Math.floor(pseudoRandom(typeIndex * 100 + variant * 31 + a * 7 + b * 13) * 4)];
+            tileCtx.fillRect(a * 4, b * 4, 4, 4);
+        }
+        return tile;
+        });
+  });
+}
+
+
+
+
+function drawBar(x, y, width, height, fraction, color) {
+    ctx.fillStyle = '#000'; ctx.fillRect(x - 1, y - 1, width + 2, height + 2);
+    ctx.fillStyle = color; ctx.fillRect(x, y, Math.max(0, width * fraction), height);
+}
+
+function drawSky() {
+    ctx.fillStyle = '#6ec6ff'; ctx.fillRect(0, 0, CANVAS_WIDTH, GROUND_Y);
+    ctx.fillStyle = '#8fd4ff'; ctx.fillRect(0, GROUND_Y - 120, CANVAS_WIDTH, 120);
+    ctx.fillStyle = '#fff';
+    [[80, 40], [300, 70], [700, 30], [860, 90]].forEach(([x, y]) => {ctx.fillRect(x, y, 60, 12); ctx.fillRect(x + 12, y - 8, 36, 8);});
+    ctx.fillStyle = '#1a120b'; ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, WORLD_HEIGHT * TILE_SIZE - GROUND_Y);
+}
+
+function drawTerrain(rowFrom, rowTo) {
+    for (let row = rowFrom; row <= rowTo; row++)
+    for (let col = 0; col < WORLD_WIDTH; col++) {
+        const blockType = blocks[row][col], x = col * TILE_SIZE, y = row * TILE_SIZE;
+        if (blockType) {
+        ctx.drawImage(blockTextures[blockType][(col * 7 + row * 13) % 4], x, y);
+        if (row === SURFACE_ROW) {ctx.fillStyle = '#4caf50'; ctx.fillRect(x, y, TILE_SIZE, 4);}      // трава
+        const maxDurability = BLOCK_TYPES[blockType].durability;
+        if (blockDurability[row][col] < maxDurability) {                                              // трещины
+            const damage = 1 - blockDurability[row][col] / maxDurability;
+            ctx.fillStyle = 'rgba(0,0,0,' + (damage * 0.55) + ')';
+            ctx.fillRect(x + 3, y + 3, 2, TILE_SIZE - 6); ctx.fillRect(x + 3, y + 8, TILE_SIZE - 6, 2); ctx.fillRect(x + 11, y + 4, 2, TILE_SIZE - 8);
+        }
+        } else if (row > SURFACE_ROW) {                                                                 // пустота (пещера, выкопанное)
+        ctx.fillStyle = '#2a1d12'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = '#34261a'; ctx.fillRect(x + 4, y + 4, 4, 4); ctx.fillRect(x + 12, y + 11, 4, 4);
+        }
+    }
+}
+
+function drawBase() {
+    ctx.fillStyle = '#8d8d99'; ctx.fillRect(BASE_LEFT, BASE_TOP + 22, BASE_WIDTH, BASE_HEIGHT - 22);                       // стены
+    ctx.fillStyle = '#a33';                                          
+    ctx.fillRect(BASE_LEFT - 8, BASE_TOP + 12, BASE_WIDTH + 16, 12);                                                        // крыша
+    ctx.fillRect(BASE_LEFT - 8, BASE_TOP, BASE_WIDTH + 16, 12); 
+    ctx.fillRect(BASE_LEFT + 8, BASE_TOP - 12, BASE_WIDTH - 16, 12);
+    ctx.fillRect(BASE_LEFT + 24, BASE_TOP - 24, BASE_WIDTH - 48, 12);
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(BASE_CENTER_X - 12, GROUND_Y - 34, 24, 34);                                    // дверь
+    ctx.fillStyle = '#ffd966'; ctx.fillRect(BASE_LEFT + 22, BASE_TOP + 36, 20, 16); ctx.fillRect(BASE_LEFT + BASE_WIDTH - 42, BASE_TOP + 36, 20, 16);   // окна
+    if (baseState.turretLevel) {ctx.fillStyle = '#333'; ctx.fillRect(BASE_CENTER_X - 8, BASE_TOP - 34, 16, 10); ctx.fillStyle = '#ffe066'; ctx.fillRect(BASE_CENTER_X - 3, BASE_TOP - 38, 6, 6);}
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('Моя База', BASE_CENTER_X, BASE_TOP + 30);
+    drawBar(BASE_LEFT, BASE_TOP - 48, BASE_WIDTH, 6, baseState.hp / baseState.maxHp, '#e53935');
+    if (isPlayerInBaseZone() && !isShopOpen) {
+    ctx.fillStyle = '#000a'; ctx.fillRect(BASE_CENTER_X - 60, BASE_TOP - 80, 120, 20);
+    ctx.fillStyle = '#f5c542'; ctx.fillText('B — магазин', BASE_CENTER_X, BASE_TOP - 66);
+    }
+}
+
+function drawEnemies() {
+    for (const enemy of enemies) {
+    if (enemy.isCaveSlime && !devModeEnabled) {                                   // пещерных слизней в тумане не видно
+        const row = Math.floor((enemy.y - 5) / TILE_SIZE), col = Math.floor(enemy.x / TILE_SIZE);
+        if (!explored[row] || !explored[row][col]) continue;
+    }
+
+    const bodyColor = enemy.hurtTimer > 0 ? '#fff' : enemy.color;
+
+    ctx.fillStyle = enemy.shadeColor; ctx.fillRect(enemy.x - 8, enemy.y - 8, 16, 8);
+    ctx.fillStyle = bodyColor; ctx.fillRect(enemy.x - 6, enemy.y - 12, 12, 4); ctx.fillRect(enemy.x - 8, enemy.y - 8, 16, 6);
+    ctx.fillStyle = '#fff'; ctx.fillRect(enemy.x - 4, enemy.y - 9, 3, 3); ctx.fillRect(enemy.x + 1, enemy.y - 9, 3, 3);
+    ctx.fillStyle = '#000'; ctx.fillRect(enemy.x - 3, enemy.y - 8, 1, 1); ctx.fillRect(enemy.x + 2, enemy.y - 8, 1, 1);
+    drawBar(enemy.x - 8, enemy.y - 20, 16, 3, enemy.hp / enemy.maxHp, '#e53935');          // красный хелс-бар над врагом
+    }
+}
+
+function drawTurretBeams() {
+    ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 2;
+    for (const beam of turretBeams) {ctx.beginPath(); ctx.moveTo(beam.x1, beam.y1); ctx.lineTo(beam.x2, beam.y2); ctx.stroke();}
+}
+
+function drawPlayer() {
+    const x = Math.round(player.x), y = Math.round(player.y), weapon = WEAPONS[player.weaponIndex];
+    ctx.fillStyle = '#f1c27d'; ctx.fillRect(x + 2, y, 8, 7);                                  // голова
+    ctx.fillStyle = '#f5c542'; ctx.fillRect(x + 1, y - 2, 10, 3);                             // каска
+    ctx.fillStyle = '#000'; ctx.fillRect(x + (player.facing > 0 ? 7 : 3), y + 3, 1, 2);       // глаз
+    ctx.fillStyle = '#2f6fcf'; ctx.fillRect(x + 1, y + 7, 10, 6);                             // тело
+    ctx.fillStyle = '#3b3b4a'; ctx.fillRect(x + 2, y + 13, 3, 5); ctx.fillRect(x + 7, y + 13, 3, 5);   // ноги
+    const weaponLength = player.weaponIndex ? 12 : 9;
+    ctx.fillStyle = weapon.color;
+    if (player.swingAnimTimer > 0) ctx.fillRect(player.facing > 0 ? x + 10 : x - weaponLength + 2, y + 7, weaponLength, 3);   // удар
+    else ctx.fillRect(player.facing > 0 ? x + 10 : x - 2, y + 1, 3, weaponLength);                                           // оружие в руке
+}
+
+// Туман: неисследованное чёрное, далёкое исследованное затемнено
+function drawFog(rowFrom, rowTo) {
+    if (devModeEnabled) return;
+    const cx = playerCenterX() / TILE_SIZE, cy = playerCenterY() / TILE_SIZE;
+    for (let row = rowFrom; row <= rowTo; row++)
+    for (let col = 0; col < WORLD_WIDTH; col++) {
+        if (!explored[row][col]) {ctx.fillStyle = '#07070b'; ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);}
+        else if (Math.hypot(col + 0.5 - cx, row + 0.5 - cy) > FOG_DIM_RADIUS) {ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);}
+    }
+}
+
+// Рамка вокруг блока под курсором: белая — достаёт, красная — слишком далеко
+function drawBlockHighlight() {
+    const col = Math.floor(mouse.x / TILE_SIZE), row = Math.floor((mouse.y + cameraY) / TILE_SIZE);
+    if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT || !blocks[row][col] || (!explored[row][col] && !devModeEnabled)) return;
+    const tool = TOOLS[player.toolIndex];
+    const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
+    ctx.strokeStyle = distance <= tool.radiusTiles * TILE_SIZE + TILE_SIZE / 2 ? '#fff' : '#ff6b6b';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(col * TILE_SIZE + 1, row * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+}
+
+function drawFloatingTexts() {
+    ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+    for (const text of floatingTexts) {ctx.fillStyle = text.color; ctx.fillText(text.text, text.x, text.y);}
+}
+
+// Элементы поверх экрана (не сдвигаются камерой)
+function drawScreenOverlay() {
+    const depth = Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE));
+    ctx.textAlign = 'left'; ctx.font = '12px monospace';
+    ctx.fillStyle = '#000a'; ctx.fillRect(6, 6, 110, 20);
+    ctx.fillStyle = '#fff'; ctx.fillText('Глубина: ' + depth + ' бл.', 12, 20);
+    ctx.fillStyle = '#000a'; ctx.fillRect(6, 30, 110, 20);
+    ctx.fillStyle = fps >= 50 ? '#7CFC8A' : fps >= 30 ? '#f5c542' : '#ff6b6b';   // зелёный, жёлтый или красный в зависимости от FPS
+    ctx.fillText('FPS: ' + fps, 12, 44);
+    ctx.textAlign = 'center';
+    if (messageTimer > 0) {
+        ctx.fillStyle = '#000a'; ctx.fillRect(100, 190, 760, 40);
+        ctx.fillStyle = '#fff'; ctx.font = '36px monospace'; ctx.fillText(messageText, 480, 220);
+    }
+    if (isGameOver) {
+        ctx.fillStyle = '#000c'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 36px monospace'; ctx.fillText('База разрушена', 480, 240);
+        ctx.font = '16px monospace'; ctx.fillText('Волн начато: ' + waveNumber + ' · Нажми, чтобы начать заново', 480, 280);
+    }
+}
+
+function render() {
+    ctx.save();
+    ctx.translate(0, -Math.round(cameraY));                      // камера следует за игроком по вертикали
+    drawSky();
+    const rowFrom = Math.max(SURFACE_ROW, Math.floor(cameraY / TILE_SIZE));
+    const rowTo = Math.min(WORLD_HEIGHT - 1, Math.ceil((cameraY + CANVAS_HEIGHT) / TILE_SIZE));
+    drawTerrain(rowFrom, rowTo);
+    drawBase();
+    drawEnemies();
+    drawTurretBeams();
+    drawPlayer();
+    drawFog(rowFrom, rowTo);
+    drawBlockHighlight();
+    drawFloatingTexts();
+    ctx.restore();
+    drawScreenOverlay();
+}
