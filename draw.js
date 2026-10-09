@@ -109,6 +109,9 @@ function drawPlayer() {
     ctx.fillStyle = weapon.color;
     if (player.swingAnimTimer > 0) ctx.fillRect(player.facing > 0 ? x + 10 : x - weaponLength + 2, y + 7, weaponLength, 3);   // удар
     else ctx.fillRect(player.facing > 0 ? x + 10 : x - 2, y + 1, 3, weaponLength);                                           // оружие в руке
+    if (player.oxygen < player.maxOxygen) {
+        drawBar(playerCenterX() - 14, playerCenterY() - 20, 30, 4, player.oxygen / player.maxOxygen, '#3385ff') // кислород над игроком
+    }
 }
 
 // Туман: неисследованное чёрное, далёкое исследованное затемнено

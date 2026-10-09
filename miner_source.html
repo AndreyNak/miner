@@ -236,6 +236,7 @@
     const BLOCK_LAYERS = [
       {
         maxDepth: 10,
+        oxygenCost: 0,
         blocks: [
           [BLOCK.DIRT, 75],
           [BLOCK.CLAY, 20],
@@ -245,6 +246,7 @@
       },
       {
         maxDepth: 30,
+        oxygenCost: 5,
         blocks: [
           [BLOCK.DIRT, 25],
           [BLOCK.CLAY, 35],
@@ -254,6 +256,7 @@
       },
       {
         maxDepth: 60,
+        oxygenCost: 15,
         blocks: [
           [BLOCK.CLAY, 5],
           [BLOCK.GRAVEL, 45],
@@ -262,6 +265,7 @@
       },
       {
         maxDepth: 100,
+        oxygenCost: 40,
         blocks: [
           [BLOCK.GRAVEL, 5],
           [BLOCK.COBBLESTONE, 75],
@@ -270,6 +274,7 @@
       },
       {
         maxDepth: Infinity,
+        oxygenCost: 100,
         blocks: [
           [BLOCK.COBBLESTONE, 70],
           [BLOCK.IRON_ORE, 25],
@@ -336,6 +341,16 @@
         describe: () => 'Сейчас ' + player.hpRegen + '/сек вне базы', format: v => v + '/сек',
         apply: v => player.hpRegen = v
       },
+      maxOxygen: {
+        title: 'Макс. кислорода', steps: [[60, 200], [1200, 600], [8800, 3000]],
+        describe: () => 'Сейчас ' + player.maxOxygen, format: v => v,
+        apply: v => {player.oxygen += v - player.maxOxygen; player.maxOxygen = v;}
+      },
+      oxygenRegen: {
+        title: 'Регенерация кислорода', steps: [[200, 100], [1500, 300], [10000, 1000]],
+        describe: () => 'Сейчас ' + player.oxygenRegen + '/сек', format: v => v,
+        apply: v => player.oxygenRegen
+      },
       moveSpeed: {
         title: 'Скорость бега', steps: [[50, 110], [800, 130], [6000, 155]],
         describe: () => 'Сейчас ' + player.moveSpeed, format: v => v,
@@ -400,7 +415,7 @@
     };
     // Какие улучшения показывать на вкладках магазина
     const SHOP_TABS = {
-      'Персонаж': ['energy', 'energyRegen', 'maxHp', 'hpRegen', 'moveSpeed', 'jumpPower', 'armor', 'luck', 'energySaving', 'teleportCooldown'],
+      'Персонаж': ['energy', 'energyRegen', 'maxHp', 'hpRegen', 'maxOxygen', 'oxygenRegen', 'moveSpeed', 'jumpPower', 'armor', 'luck', 'energySaving', 'teleportCooldown'],
       'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret']
     };
     const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База'];
@@ -576,6 +591,7 @@
         velocityX: 0, velocityY: 0, onGround: false, facing: 1,
         hp: 100, maxHp: 100, hpRegen: 0.5,
         energy: 15, maxEnergy: 15, energyRegen: 1,
+        oxygen: 50, maxOxygen: 50, oxygenRegen: 25,
         moveSpeed: 95, jumpPower: 290,
         armor: 0,             // доля снижения урона
         luck: 0,              // бонус очков с блоков
@@ -924,6 +940,22 @@
       if (baseState.repairRate && baseState.hp > 0) baseState.hp = Math.min(baseState.maxHp, baseState.hp + baseState.repairRate * dt);
     }
 
+    function updateOxygen(dt) {
+      const NoOxygenMultiplyDamage = 5
+      const depth = Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE));
+      const layer = BLOCK_LAYERS.find(layer => depth < layer.maxDepth);
+      if (layer.maxDepth <= 10) {
+        player.oxygen = Math.min(player.maxOxygen, player.oxygen) + (player.oxygenRegen * dt); return  
+      } else {
+        if (player.oxygen >= 0) {
+          player.oxygen -= layer.oxygenCost * dt;
+        } else {
+          player.hp -= (layer.oxygenCost * dt) * NoOxygenMultiplyDamage;
+        }
+      }
+
+    }
+
     function updateMiningBase(dt) {
       if (baseState.miningRate <= 0) return;
       earnPoints(baseState.miningRate * dt);
@@ -958,6 +990,7 @@
       if (mouse.rightDown) playerDig();
       if (mouse.leftDown) playerAttack();
       updateRegeneration(dt);
+      updateOxygen(dt);
       updateMiningBase(dt);
       updateTurret(dt);
       updateCaveRespawn(dt);
