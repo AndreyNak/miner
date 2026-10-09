@@ -387,11 +387,11 @@
         describe: () => 'Сейчас ' + baseState.repairRate + ' HP/сек', format: v => v + ' HP/сек',
         apply: v => baseState.repairRate = v
       },
-      // baseMining: {
-      //   titile: 'Автозарабаток', steps: [[200,  5], [1500, 30], [6000, 100]],
-      //   describe: () => 'Сейчас' + baseState.MiningRate + ' очков/сек', format: v => v + 'очков/сек',
-      //   apply : v => baseState.MiningRate = v
-      // },
+      baseMining: {
+        title: 'Автозарабаток', steps: [[200,  5], [1500, 30], [6000, 100]],
+        describe: () => 'Сейчас ' + baseState.miningRate + ' очков/сек', format: v => v + ' очков/сек',
+        apply : v => baseState.miningRate = v
+      },
       turret: {
         title: 'Орудие базы', steps: [[500, 1], [1500, 2], [6000, 3]],
         describe: () => baseState.turretLevel ? 'Ур. ' + baseState.turretLevel + ': урон ' + TURRET_LEVELS[baseState.turretLevel].damage + ', 1 выстрел/' + TURRET_LEVELS[baseState.turretLevel].cooldown + 'с' : 'Не построено',
@@ -402,7 +402,7 @@
     // Какие улучшения показывать на вкладках магазина
     const SHOP_TABS = {
       'Персонаж': ['energy', 'energyRegen', 'maxHp', 'hpRegen', 'moveSpeed', 'jumpPower', 'armor', 'luck', 'energySaving', 'teleportCooldown'],
-      'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'turret']
+      'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret']
     };
     const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База'];
     const DEV_CODE = '1337';
@@ -645,7 +645,7 @@
       upgradeLevels = {};
       ownedWeapons = WEAPONS.map((w, i) => i === 0);
       ownedTools = TOOLS.map((t, i) => i === 0);
-      baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, turretLevel: 0};
+      baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0};
       enemies = []; floatingTexts = []; turretBeams = [];
       waveNumber = 0; waveActive = false; waveTimer = FIRST_WAVE_DELAY_SEC; spawnQueue = []; spawnTimer = 0;
       turretTimer = 0; isGameOver = false; messageText = ''; messageTimer = 0;
@@ -906,6 +906,12 @@
       if (isShopOpen && !inBase) {isShopOpen = false; shopElement.className = 'h';}   // вышел из зоны базы — магазин закрывается
     }
 
+    function updateMiningBase(dt) {
+      if (baseState.miningRate <= 0) return;
+      earnPoints(baseState.miningRate * dt);
+    }
+
+
     function checkDefeat() {
       if (baseState.hp <= 0) {baseState.hp = 0; isGameOver = true; isShopOpen = false; shopElement.className = 'h';}
       if (player.hp <= 0) {                                       // смерть игрока: телепорт и минус половина очков
@@ -933,6 +939,7 @@
       revealAroundPlayer();
       if (!isShopOpen) {if (mouse.rightDown) playerDig(); if (mouse.leftDown) playerAttack();}
       updateRegeneration(dt);
+      updateMiningBase(dt);
       updateTurret(dt);
       updateCaveRespawn(dt);
       updateWaves(dt);
