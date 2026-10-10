@@ -105,7 +105,7 @@ function drawPlayer() {
     ctx.fillStyle = weapon.color;
     if (player.swingAnimTimer > 0) ctx.fillRect(player.facing > 0 ? x + 10 : x - weaponLength + 2, y + 7, weaponLength, 3);   // удар
     else ctx.fillRect(player.facing > 0 ? x + 10 : x - 2, y + 1, 3, weaponLength);                                           // оружие в руке
-    if (player.oxygen < player.maxOxygen) {
+    if (player.oxygen < player.maxOxygen) {    
         drawBar(playerCenterX() - 14, playerCenterY() - 20, 30, 4, player.oxygen / player.maxOxygen, '#3385ff') // кислород над игроком
     }
 }
@@ -158,6 +158,23 @@ function drawScreenOverlay() {
     }
 }
 
+function drawOxygenPulse() {
+  const ratio = player.oxygen / player.maxOxygen;
+  if (ratio >= 0.25) return; // эффекта нет выше 25%
+
+  // 0 при 25%, 1 при 0%
+  const strength = 1 - ratio / 0.25;
+
+  // медленная волна ~1.5 Гц: sin даёт -1..1, переводим в 0..1
+  const wave = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+
+  // амплитуда затемнения: от 0 до 0.9 * strength
+  const alpha = wave * strength * 0.9;
+
+  ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
 function render() {
     ctx.save();
     ctx.translate(0, -Math.round(cameraY));                      // камера следует за игроком по вертикали
@@ -173,5 +190,6 @@ function render() {
     drawBlockHighlight();
     drawFloatingTexts();
     ctx.restore();
+    drawOxygenPulse();
     drawScreenOverlay();
 }
