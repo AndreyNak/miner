@@ -312,6 +312,27 @@
       {hp: 5, damage: 5, speed: 15, points: 5, color: '#4fc84f' , shadeColor: "#2f9a2f" },    // зелёный
       {hp: 10, damage: 15, speed: 18, points: 20, color: "#3f6fe0" , shadeColor: "#2a4aa0" } , // синий
       {hp: 30, damage: 35, speed: 20, points: 60, color: "#deb63e" , shadeColor: "#6f5b1e"}];  // желтый
+
+    const CAVE_SLIME_LAYERS = [
+      { 
+        maxDepth: 30,
+        spawnChance: 0.02,
+        hpMultiplier: 1, damageMultiplier: 1, pointsMultiplier: 1,
+        slimes: [[GREEN_SLIME, 85], [BLUE_SLIME, 15]] 
+      },
+      { 
+        maxDepth: 100, 
+        spawnChance: 0.04,
+        hpMultiplier: 1.5, damageMultiplier: 2, pointsMultiplier: 1.5,
+        slimes: [[GREEN_SLIME, 30], [BLUE_SLIME, 55], [YELLOW_SLIME, 15]] 
+      },
+      { 
+        maxDepth: Infinity,
+        spawnChance: 0.07,
+        hpMultiplier: 2.5, damageMultiplier: 4, pointsMultiplier: 3,
+        slimes: [[BLUE_SLIME, 30], [YELLOW_SLIME, 70]] 
+      },
+    ];
     
     const SLIME_JUMP_POWER = 300;      // сила прыжка слизня (высота ~50 пикселей, чуть выше 2 блоков)
     const SLIME_MAX_STEP_BLOCKS = 2;
@@ -342,14 +363,14 @@
         apply: v => player.hpRegen = v
       },
       maxOxygen: {
-        title: 'Макс. кислорода', steps: [[60, 200], [1200, 600], [8800, 3000]],
+        title: 'Макс. кислорода', steps: [[60, 200], [1200, 850], [6500, 3500], [10000, 8000]],
         describe: () => 'Сейчас ' + player.maxOxygen, format: v => v,
         apply: v => {player.oxygen += v - player.maxOxygen; player.maxOxygen = v;}
       },
       oxygenRegen: {
-        title: 'Регенерация кислорода', steps: [[200, 100], [1500, 300], [10000, 1000]],
+        title: 'Регенерация кислорода', steps: [[200, 100], [1500, 300], [7000, 1500], [12000, 4000]],
         describe: () => 'Сейчас ' + player.oxygenRegen + '/сек', format: v => v,
-        apply: v => player.oxygenRegen
+        apply: v => player.oxygenRegen = v
       },
       moveSpeed: {
         title: 'Скорость бега', steps: [[50, 110], [800, 130], [6000, 155]],
@@ -522,20 +543,7 @@
 
     // Какой блок ставить на данной глубине: чем глубже, тем ценнее. roll — случайное число 0..1.
     function chooseBlockTypeByDepth(depth, roll) {
-      const layer = BLOCK_LAYERS.find(layer => depth < layer.maxDepth);
-
-      let value = roll;
-
-      for (const [block, weight] of layer.blocks) {
-        value -= weight / 100;
-
-        if (value < 0) {
-          return block;
-        }
-      }
-
-      // На случай ошибок округления
-      return layer.blocks.at(-1)[0];
+      return pickWeighted(findLayerByDepth(BLOCK_LAYERS, depth).blocks, roll);
     }
 
     // Вырезает квадрат пустоты (ширина 3 или 4 блока) — кисть для пещер
@@ -609,26 +617,33 @@
       };
     }
 
-    function getDepthFraction(row) { return (row - SURFACE_ROW) / (WORLD_HEIGHT - SURFACE_ROW); }
-
-    // Чем глубже, тем чаще попадаются сильные слизни
-    function pickCaveSlimeType(depthFraction) {
-      const roll = Math.random();
-      if (depthFraction < 0.25) return roll < 0.85 ? GREEN_SLIME : BLUE_SLIME;
-      if (depthFraction < 0.6)  return roll < 0.3 ? GREEN_SLIME : roll < 0.85 ? BLUE_SLIME : YELLOW_SLIME;
-      return roll < 0.1 ? GREEN_SLIME : roll < 0.45 ? BLUE_SLIME : YELLOW_SLIME;
+    // Находит слой по глубине. Если глубина больше всех maxDepth, берётся последний слой (у тебя в этом случае был бы undefined и ошибка)
+    function findLayerByDepth(layers, depth) {
+      return layers.find(layer => depth < layer.maxDepth) || layers.at(-1);
     }
 
-    // Слизень на полу клетки (col, row). Глубже: больше HP (до ×2.5), урон (до ×2) и награда (до ×2)
+    // Выбор по весам: entries = [[значение, вес], ...]. Веса не обязаны давать в сумме 100, считается доля от общей суммы
+    function pickWeighted(entries, roll) {
+      const totalWeight = entries.reduce((sum, [, weight]) => sum + weight, 0);
+      let value = roll * totalWeight;
+      for (const [item, weight] of entries) {
+        value -= weight;
+        if (value < 0) return item;
+      }
+      return entries.at(-1)[0];   // на случай ошибок округления
+    }
+
+    // Создаёт слизня на полу клетки (col, row) по параметрам слоя, в котором находится клетка
     function createCaveSlimeAt(col, row) {
-      const depthFraction = getDepthFraction(row);
-      const slime = createEnemy(pickCaveSlimeType(depthFraction), col * TILE_SIZE + TILE_SIZE / 2, (row + 1) * TILE_SIZE, true, 1 + 1.5 * depthFraction);
-      slime.damage = Math.round(slime.damage * (1 + depthFraction));
-      slime.points = Math.round(slime.points * (1 + depthFraction));
+      const layer = findLayerByDepth(CAVE_SLIME_LAYERS, row - SURFACE_ROW);
+      const slimeType = pickWeighted(layer.slimes, Math.random());
+      const slime = createEnemy(slimeType, col * TILE_SIZE + TILE_SIZE / 2, (row + 1) * TILE_SIZE, true, layer.hpMultiplier);
+      slime.damage = Math.max(1, Math.round(slime.damage * layer.damageMultiplier));
+      slime.points = Math.max(1, Math.round(slime.points * layer.pointsMultiplier));
       return slime;
     }
 
-    // Начальная расстановка: ищем все "полы" пещер, перемешиваем и расставляем, чтобы глубже было гуще
+   // Начальная расстановка: ищем все клетки пола в пещерах, перемешиваем и расставляем по шансу слоя
     function spawnCaveSlimes() {
       const floorTiles = [];
       for (let col = 0; col < WORLD_WIDTH; col++)
@@ -638,9 +653,9 @@
       let count = 0;
       for (const tile of floorTiles) {
         if (count >= CAVE_SLIME_LIMIT) break;
-        const chance = 0.02 + 0.05 * getDepthFraction(tile.row);   // у поверхности 2%, на дне 7%
-        if (Math.random() < chance) { enemies.push(createCaveSlimeAt(tile.col, tile.row)); count++; }
-      }
+        const layer = findLayerByDepth(CAVE_SLIME_LAYERS, tile.row - SURFACE_ROW);
+        if (Math.random() < layer.spawnChance) { enemies.push(createCaveSlimeAt(tile.col, tile.row)); count++; }
+      }      
     }
 
     function updateCaveRespawn(dt) {
@@ -811,15 +826,19 @@
     function getWaveEnemyCounts(wave) {
       const enemies = {
         1: [5, 0, 0], 2: [10, 0, 0], 3: [13, 2, 0],
-        4: [15, 5, 0], 5: [20, 10, 1], 6:[25, 15, 3],
+        4: [15, 5, 0], 5: [20, 10, 1], 6: [25, 15, 3],
         7: [25, 20, 6]
-      }
-      
-      if (enemies[wave]) {
-        return enemies[wave]
-      }
+      };
 
-      return [5 * (wave - 3), 12 * (wave - 3),  9 * (wave - 3)];
+      if (enemies[wave]) return enemies[wave];
+
+      const extra  = wave - 7;
+
+      const green_slimes_count = Math.round(25 + 3  * Math.pow(extra , 1.1));
+      const blue_slimes_count = Math.round(20 + 4  * Math.pow(extra , 1.15));
+      const yellow_slimes_count = Math.round(6  + 1.5 * Math.pow(extra , 1.5));
+
+      return [green_slimes_count, blue_slimes_count, yellow_slimes_count];
     }
 
     function getWaveBonus(wave) {
