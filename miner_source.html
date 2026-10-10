@@ -221,6 +221,15 @@
     const MAX_WAVE_DELAY_MIN = 6;         // потолок ожидания между волнами
     const SPAWN_INTERVAL_SEC = 1.2;       // пауза между появлением врагов в волне
 
+    // --- Лестница ---
+    const LADDER_PACK_SIZE = 10;        // сколько лестниц в одной покупке
+    const LADDER_PACK_PRICE = 40;       // цена пачки
+    const LADDER_STACK_LIMIT = 100;     // максимум лестниц в инвентаре
+    const LADDER_CLIMB_SPEED = 70;      // скорость подъёма и спуска (пиксели в секунду)
+    const LADDER_REACH_TILES = 3;       // на каком расстоянии от игрока можно поставить лестницу
+    const LADDER_PLACE_COOLDOWN = 0.15; // пауза между установками при зажатой кнопке
+    const LADDER_ITEM = { name: 'Лестница', color: '#c8934a' };
+
     // --- Блоки ---
     const BLOCK = {DIRT: 1, CLAY: 2, GRAVEL: 3, COBBLESTONE: 4, IRON_ORE: 5, CRYSTAL: 6, VOID_ORE: 7};
     // durability — крепкость, level — нужный уровень инструмента, points — очки за добычу
@@ -442,7 +451,7 @@
       'Персонаж': ['energy', 'energyRegen', 'maxHp', 'hpRegen', 'maxOxygen', 'oxygenRegen', 'moveSpeed', 'jumpPower', 'armor', 'luck', 'energySaving', 'teleportCooldown'],
       'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret']
     };
-    const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База'];
+    const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База', 'Расходники'];
     const DEV_CODE = '1337';
 
     /* ======================== 2. СОСТОЯНИЕ ИГРЫ ======================== */
@@ -459,6 +468,9 @@
     // Мир: blocks[строка][столбец] — тип блока (0 = пусто), blockDurability — оставшаяся крепкость,
     // explored — открыта ли клетка из тумана
     let blocks, blockDurability, explored;
+
+    // ladders[строка][столбец] = true, если в клетке стоит лестница
+    let ladders;
 
     let player;                 // объект игрока (создаётся в createPlayer)
     let enemies = [];           // все враги: и волны, и пещерные слизни
@@ -581,16 +593,18 @@
     }
 
     function generateBlocks() {
+      ladders = [];
       const seed = Math.random() * 1000;
       blocks = []; blockDurability = []; explored = [];
       for (let row = 0; row < WORLD_HEIGHT; row++) {
-        blocks[row] = []; blockDurability[row] = []; explored[row] = [];
+        blocks[row] = []; blockDurability[row] = []; explored[row] = []; ladders[row] = [];
         for (let col = 0; col < WORLD_WIDTH; col++) {
           let blockType = 0;                                   // над землёй — воздух
           if (row >= SURFACE_ROW) {
             blockType = row === WORLD_HEIGHT - 1 ? BLOCK.VOID_ORE   // нижний слой мира
               : chooseBlockTypeByDepth(row - SURFACE_ROW, pseudoRandom(col * 37 + row * 101 + seed));
           }
+          ladders[row][col] = false;
           blocks[row][col] = blockType;
           blockDurability[row][col] = blockType ? BLOCK_TYPES[blockType].durability : 0;
           explored[row][col] = row < SURFACE_ROW;              // небо видно сразу, подземелье в тумане
@@ -711,7 +725,11 @@
 
     /* ====================== 5. ДЕЙСТВИЯ ИГРОКА ====================== */
     function getSelectedItem() { return player.inventory[player.selectedSlot]; }
-    function getItemData(item) { return item.kind === 'weapon' ? WEAPONS[item.index] : TOOLS[item.index]; }
+    function getItemData(item) {
+      if (item.kind === 'weapon') return WEAPONS[item.index];
+      if (item.kind === 'tool') return TOOLS[item.index];
+      return LADDER_ITEM;
+    }
     function getItemColor(item) { return getItemData(item).color; }
 
     // ЛКМ: используем то, что лежит в выбранной ячейке
@@ -719,7 +737,59 @@
       const item = getSelectedItem();
       if (!item) return;
       if (item.kind === 'weapon') { player.weaponIndex = item.index; playerAttack(); }
-      else { player.toolIndex = item.index; playerDig(); }
+      else if (item.kind === 'tool') { player.toolIndex = item.index; playerDig(); }
+      else if (item.kind === 'ladder') placeLadder();
+    }
+
+    function ladderAt(col, row) {
+      return col >= 0 && col < WORLD_WIDTH && row >= 0 && row < WORLD_HEIGHT && ladders[row][col];
+    }
+
+    // Лестницу нужно крепить к твёрдому блоку сбоку или к другой лестнице сверху или снизу
+    function hasLadderSupport(col, row) {
+      return isSolidTile(col - 1, row) || isSolidTile(col + 1, row) || ladderAt(col, row - 1) || ladderAt(col, row + 1);
+    }
+
+    function placeLadder() {
+      if (player.digTimer > 0 || isGameOver) return;
+      const col = Math.floor(mouse.x / TILE_SIZE), row = Math.floor((mouse.y + cameraY) / TILE_SIZE);
+      if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT) return;
+      if (blocks[row][col] || ladders[row][col]) return;                                   // клетка занята
+      const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
+      if (distance > LADDER_REACH_TILES * TILE_SIZE + TILE_SIZE / 2) return;               // слишком далеко
+      if (!hasLadderSupport(col, row)) { addFloatingText(playerCenterX(), player.y - 6, 'Лестницу нужно ставить с боку от блока или к другой лестнице ', '#ffe706'); player.digTimer = 0.5; return; }
+      ladders[row][col] = true;
+      player.digTimer = LADDER_PLACE_COOLDOWN;
+      const stack = player.inventory[player.selectedSlot];
+      stack.count--;
+      if (stack.count <= 0) player.inventory[player.selectedSlot] = null;                  // лестницы кончились — ячейка освобождается
+    }
+
+    // Лестница ломается инструментом бесплатно и бесследно (в инвентарь не возвращается)
+    function breakLadderAt(col, row) {
+      if (!ladders[row][col]) return;
+      const tool = TOOLS[player.toolIndex];
+      const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
+      if (distance > tool.radiusTiles * TILE_SIZE + TILE_SIZE / 2) return;
+      ladders[row][col] = false;
+      player.digTimer = DIG_COOLDOWN;
+    }
+
+    // Тело игрока касается лестницы (проверяется столбец под центром игрока, от головы до клетки под ногами)
+    function isPlayerOnLadder() {
+      const col = Math.floor(playerCenterX() / TILE_SIZE);
+      const topRow = Math.floor(player.y / TILE_SIZE), bottomRow = Math.floor((player.y + player.height) / TILE_SIZE);
+      for (let row = topRow; row <= bottomRow; row++) if (ladderAt(col, row)) return true;
+      return false;
+    }
+
+    // Работа со стопкой лестниц в инвентаре
+    function findLadderSlot() { return player.inventory.findIndex(slot => slot && slot.kind === 'ladder'); }
+    function countLadders() { const i = findLadderSlot(); return i === -1 ? 0 : player.inventory[i].count; }
+    function addLadders(amount) {
+      let i = findLadderSlot();
+      if (i === -1) { i = player.inventory.indexOf(null); player.inventory[i] = { kind: 'ladder', count: 0 }; }
+      player.inventory[i].count += amount;
     }
 
     // Что случится при покупке: 'owned' (уже есть), 'obsolete' (есть лучше того же семейства),
@@ -802,7 +872,8 @@
     function playerDig() {
       if (player.digTimer > 0 || isGameOver) return;
       const col = Math.floor(mouse.x / TILE_SIZE), row = Math.floor((mouse.y + cameraY) / TILE_SIZE);
-      if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT || !blocks[row][col]) return;
+      if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT) return;
+      if (!blocks[row][col]) { breakLadderAt(col, row); return; }   // в клетке нет блока: возможно, там лестница
       const tool = TOOLS[player.toolIndex];
       const energyCost = tool.energyCost * (1 - player.energySaving);
       const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
@@ -826,8 +897,14 @@
       const direction = (keysDown.KeyD || keysDown.ArrowRight ? 1 : 0) - (keysDown.KeyA || keysDown.ArrowLeft ? 1 : 0);
       player.velocityX = direction * player.moveSpeed;
       if (direction) player.facing = direction;
-      if ((keysDown.KeyW || keysDown.ArrowUp || keysDown.Space) && player.onGround) {player.velocityY = -player.jumpPower; player.onGround = false;}
-      player.velocityY = Math.min(MAX_FALL_SPEED, player.velocityY + GRAVITY * dt);
+      const onLadder = isPlayerOnLadder();
+      if (!onLadder && (keysDown.KeyW || keysDown.ArrowUp || keysDown.Space) && player.onGround) { player.velocityY = -player.jumpPower; player.onGround = false; }
+      if (onLadder) {
+        // на лестнице гравитации нет: W вверх, S вниз, без нажатия игрок висит (стрелки не работают)
+        player.velocityY = ((keysDown.KeyS ? 1 : 0) - (keysDown.KeyW ? 1 : 0)) * LADDER_CLIMB_SPEED;
+      } else {
+        player.velocityY = Math.min(MAX_FALL_SPEED, player.velocityY + GRAVITY * dt);
+      }
 
       let newX = player.x + player.velocityX * dt;
       newX = Math.max(0, Math.min(WORLD_WIDTH * TILE_SIZE - player.width, newX));
@@ -1079,8 +1156,18 @@
       return { title, description: description + note, cost, state, onBuy: () => addItemToInventory(kind, index) };
     }
 
+    function buildLadderShopItem() {
+      const owned = countLadders();
+      const hasSlot = findLadderSlot() !== -1 || player.inventory.includes(null);
+      const stackFull = owned + LADDER_PACK_SIZE > LADDER_STACK_LIMIT;
+      const note = stackFull ? ' · стопка полная' : !hasSlot ? ' · нет места в инвентаре' : '';
+      return { title: 'Лестницы ×' + LADDER_PACK_SIZE, description: 'ЛКМ — поставить у опоры · у тебя: ' + owned + '/' + LADDER_STACK_LIMIT + note,
+              cost: LADDER_PACK_PRICE, state: stackFull || !hasSlot ? 'max' : 'buy', onBuy: () => addLadders(LADDER_PACK_SIZE) };
+    }
+
     // Список товаров текущей вкладки. state: 'buy' (купить), 'own' (куплено, можно взять), 'equipped', 'max'
     function getShopItems() {
+      if (shopTab === 'Расходники') return [buildLadderShopItem()];
       if (shopTab === 'Оружие') return WEAPONS.map((w, i) => buildInventoryShopItem('weapon', i, w.name,
         'Урон ' + w.damage + ' · 1 удар/' + w.cooldown + 'с · энергия ' + w.energyCost + ' · радиус ' + w.radiusTiles + ' бл.', w.cost));
       if (shopTab === 'Инструменты') return TOOLS.map((t, i) => buildInventoryShopItem('tool', i, t.name,

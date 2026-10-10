@@ -115,6 +115,11 @@ function drawPlayer() {
 
 function drawItemIcon(item, x, y) {
   ctx.fillStyle = getItemColor(item);
+  if (item.kind === 'ladder') {
+    ctx.fillRect(x + 12, y + 8, 4, 28); ctx.fillRect(x + 28, y + 8, 4, 28);                // рейки
+    for (let rung = 0; rung < 4; rung++) ctx.fillRect(x + 12, y + 13 + rung * 7, 20, 3);   // перекладины
+    return;
+  }
   if (item.kind === 'weapon') {
     ctx.fillRect(x + 20, y + 10, 5, 20);                           // лезвие
     ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 15, y + 30, 15, 4); ctx.fillRect(x + 20, y + 34, 5, 6);   // гарда и рукоять
@@ -132,10 +137,38 @@ function drawInventoryBar() {
     ctx.fillStyle = isSelected ? 'rgba(245,197,66,.25)' : 'rgba(0,0,0,.55)'; ctx.fillRect(x, top, SLOT_SIZE, SLOT_SIZE);
     ctx.strokeStyle = isSelected ? '#f5c542' : '#5b6478'; ctx.lineWidth = isSelected ? 3 : 2; ctx.strokeRect(x + 1, top + 1, SLOT_SIZE - 2, SLOT_SIZE - 2);
     ctx.fillStyle = '#9aa3b5'; ctx.font = '10px monospace'; ctx.textAlign = 'left'; ctx.fillText(i + 1, x + 4, top + 12);
-    if (player.inventory[i]) drawItemIcon(player.inventory[i], x, top);
+    const item = player.inventory[i];
+    if (item) {
+      drawItemIcon(item, x, top);
+      if (item.kind === 'ladder') { ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'right'; ctx.fillText(item.count, x + SLOT_SIZE - 4, top + SLOT_SIZE - 5); }
+    }
   }
   const held = getSelectedItem();
   if (held) { ctx.fillStyle = '#fff'; ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.fillText(getItemData(held).name, CANVAS_WIDTH / 2, top - 8); }
+}
+
+function drawLadders() {
+  const firstRow = Math.max(0, Math.floor(cameraY / TILE_SIZE)), lastRow = Math.min(WORLD_HEIGHT - 1, Math.ceil((cameraY + CANVAS_HEIGHT) / TILE_SIZE));
+  ctx.fillStyle = LADDER_ITEM.color;
+  for (let row = firstRow; row <= lastRow; row++)
+    for (let col = 0; col < WORLD_WIDTH; col++) {
+      if (!ladders[row][col]) continue;
+      const x = col * TILE_SIZE, y = row * TILE_SIZE;
+      ctx.fillRect(x + 4, y, 3, TILE_SIZE); ctx.fillRect(x + 13, y, 3, TILE_SIZE);          // боковые рейки
+      ctx.fillRect(x + 4, y + 3, 12, 2); ctx.fillRect(x + 4, y + 11, 12, 2);               // перекладины
+    }
+}
+
+// Рамка в клетке, куда встанет лестница: зелёная — можно, красная — нельзя
+function drawLadderPlacementPreview() {
+  const held = getSelectedItem();
+  if (!held || held.kind !== 'ladder') return;
+  const col = Math.floor(mouse.x / TILE_SIZE), row = Math.floor((mouse.y + cameraY) / TILE_SIZE);
+  if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT || blocks[row][col] || ladders[row][col]) return;
+  const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
+  const canPlace = distance <= LADDER_REACH_TILES * TILE_SIZE + TILE_SIZE / 2 && hasLadderSupport(col, row);
+  ctx.strokeStyle = canPlace ? '#7CFC8A' : '#ff6b6b'; ctx.lineWidth = 2;
+  ctx.strokeRect(col * TILE_SIZE + 1, row * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 }
 
 // Туман: неисследованное чёрное, далёкое исследованное затемнено
@@ -213,12 +246,14 @@ function render() {
     const rowFrom = Math.max(SURFACE_ROW, Math.floor(cameraY / TILE_SIZE));
     const rowTo = Math.min(WORLD_HEIGHT - 1, Math.ceil((cameraY + CANVAS_HEIGHT) / TILE_SIZE));
     drawTerrain(rowFrom, rowTo);
+    drawLadders();
     drawBase();
     drawEnemies();
     drawTurretBeams();
     drawPlayer();
     drawFog(rowFrom, rowTo);
     drawBlockHighlight();
+    drawLadderPlacementPreview();
     drawFloatingTexts();
     ctx.restore();
     drawOxygenPulse();
