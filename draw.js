@@ -58,14 +58,14 @@ function drawTerrain(rowFrom, rowTo) {
 }
 
 function drawBase() {
-    ctx.fillStyle = '#8d8d99'; ctx.fillRect(BASE_LEFT, BASE_TOP + 22, BASE_WIDTH, BASE_HEIGHT - 22);                       // стены
+    ctx.fillStyle = '#b99560'; ctx.fillRect(BASE_LEFT, BASE_TOP + 22, BASE_WIDTH, BASE_HEIGHT - 22);                       // стены
     ctx.fillStyle = '#a33';                                          
     ctx.fillRect(BASE_LEFT - 8, BASE_TOP + 12, BASE_WIDTH + 16, 12);                                                        // крыша
     ctx.fillRect(BASE_LEFT - 8, BASE_TOP, BASE_WIDTH + 16, 12); 
     ctx.fillRect(BASE_LEFT + 8, BASE_TOP - 12, BASE_WIDTH - 16, 12);
     ctx.fillRect(BASE_LEFT + 24, BASE_TOP - 24, BASE_WIDTH - 48, 12);
     ctx.fillStyle = '#5a3a1e'; ctx.fillRect(BASE_CENTER_X - 12, GROUND_Y - 34, 24, 34);                                    // дверь
-    ctx.fillStyle = '#ffd966'; ctx.fillRect(BASE_LEFT + 22, BASE_TOP + 36, 20, 16); ctx.fillRect(BASE_LEFT + BASE_WIDTH - 42, BASE_TOP + 36, 20, 16);   // окна
+    ctx.fillStyle = '#ffd966'; ctx.fillRect(BASE_LEFT + 22, BASE_TOP + 50, 20, 16); ctx.fillRect(BASE_LEFT + BASE_WIDTH - 42, BASE_TOP + 50, 20, 16);   // окна
     if (baseState.turretLevel) {ctx.fillStyle = '#333'; ctx.fillRect(BASE_CENTER_X - 8, BASE_TOP - 34, 16, 10); ctx.fillStyle = '#ffe066'; ctx.fillRect(BASE_CENTER_X - 3, BASE_TOP - 38, 6, 6);}
     ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
     ctx.fillText(baseState.hp + "/" + baseState.maxHp, BASE_CENTER_X, BASE_TOP - 30);
