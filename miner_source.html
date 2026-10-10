@@ -187,7 +187,7 @@
     const TILE_SIZE = 20;                 // размер одного блока в пикселях
     const WORLD_WIDTH = 48;               // ширина мира в блоках
     const WORLD_HEIGHT = 150;              // высота мира в блоках
-    const SURFACE_ROW = 8;                // номер строки, с которой начинается земля
+    const SURFACE_ROW = 12;                // номер строки, с которой начинается земля
     const GROUND_Y = SURFACE_ROW * TILE_SIZE;   // координата Y поверхности в пикселях
     const CANVAS_WIDTH = 960;
     const CANVAS_HEIGHT = 540;
@@ -550,8 +550,26 @@
         }
     }
 
+    // Пещеры: червеобразные ходы шириной 3-4 блока на разной глубине
+    function generateCaves() {
+      for (let i = 0; i < CAVE_WORM_COUNT; i++) {
+        let x = 2 + Math.random() * (WORLD_WIDTH - 4);
+        let y = SURFACE_ROW + 6 + i * ((WORLD_HEIGHT - SURFACE_ROW - 12) / CAVE_WORM_COUNT) + Math.random() * 4;
+        let angle = Math.random() * Math.PI * 2;     // случайное направление (0…360°)
+        const length = 30 + Math.random() * 20;      // длина хода: 30–50 шагов
+        const width = Math.random() < 0.5 ? 3 : 4;   // ширина: 3 или 4 блока
+        for (let step = 0; step < length; step++) {
+          carveCave(Math.round(x), Math.round(y), width);
+          angle += (Math.random() - 0.5) * 0.7;
+          x += Math.cos(angle);
+          y += Math.sin(angle) * 0.7;
+          x = Math.min(WORLD_WIDTH - 3, Math.max(2, x));
+          y = Math.min(WORLD_HEIGHT - 4, Math.max(SURFACE_ROW + 4, y));
+        }
+      }
+    }
 
-    function generateWorld() {
+    function generateBlocks() {
       const seed = Math.random() * 1000;
       blocks = []; blockDurability = []; explored = [];
       for (let row = 0; row < WORLD_HEIGHT; row++) {
@@ -567,22 +585,11 @@
           explored[row][col] = row < SURFACE_ROW;              // небо видно сразу, подземелье в тумане
         }
       }
-      // Пещеры: червеобразные ходы шириной 3-4 блока на разной глубине
-      for (let i = 0; i < CAVE_WORM_COUNT; i++) {
-        let x = 2 + Math.random() * (WORLD_WIDTH - 4);
-        let y = SURFACE_ROW + 6 + i * ((WORLD_HEIGHT - SURFACE_ROW - 12) / CAVE_WORM_COUNT) + Math.random() * 4;
-        let angle = Math.random() * Math.PI * 2;
-        const length = 30 + Math.random() * 20;
-        const width = Math.random() < 0.5 ? 3 : 4;
-        for (let step = 0; step < length; step++) {
-          carveCave(Math.round(x), Math.round(y), width);
-          angle += (Math.random() - 0.5) * 0.7;
-          x += Math.cos(angle);
-          y += Math.sin(angle) * 0.7;
-          x = Math.min(WORLD_WIDTH - 3, Math.max(2, x));
-          y = Math.min(WORLD_HEIGHT - 4, Math.max(SURFACE_ROW + 4, y));
-        }
-      }
+    }
+
+    function generateWorld() {
+      generateBlocks()
+      generateCaves()
     }
 
     function createPlayer() {
@@ -721,7 +728,6 @@
     }
 
     // ЛКМ: удар по ближайшему врагу в сторону курсора (энергия тратится только при попадании)
-
     function playerAttack() {
       if (player.attackTimer > 0 || isGameOver) return;
       const weapon = WEAPONS[player.weaponIndex];

@@ -1,10 +1,9 @@
  /* ============================= 8. ОТРИСОВКА ============================= */
 
-// Текстуры блоков ("шум") рисуются один раз: 4 варианта на каждый тип блока
 
 let blockTextures;
 
-
+// Текстуры блоков ("шум") рисуются один раз: 4 варианта на каждый тип блока
 function createBlockTextures() {
     blockTextures = BLOCK_TYPES.map((type, typeIndex) => {
         if (!type) return null;
@@ -20,9 +19,6 @@ function createBlockTextures() {
         });
   });
 }
-
-
-
 
 function drawBar(x, y, width, height, fraction, color) {
     ctx.fillStyle = '#000'; ctx.fillRect(x - 1, y - 1, width + 2, height + 2);
