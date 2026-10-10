@@ -95,19 +95,47 @@ function drawTurretBeams() {
 }
 
 function drawPlayer() {
-    const x = Math.round(player.x), y = Math.round(player.y), weapon = WEAPONS[player.weaponIndex];
+    const x = Math.round(player.x), y = Math.round(player.y);
     ctx.fillStyle = '#f1c27d'; ctx.fillRect(x + 2, y, 8, 7);                                  // голова
     ctx.fillStyle = '#f5c542'; ctx.fillRect(x + 1, y - 2, 10, 3);                             // каска
     ctx.fillStyle = '#000'; ctx.fillRect(x + (player.facing > 0 ? 7 : 3), y + 3, 1, 2);       // глаз
     ctx.fillStyle = '#2f6fcf'; ctx.fillRect(x + 1, y + 7, 10, 6);                             // тело
     ctx.fillStyle = '#3b3b4a'; ctx.fillRect(x + 2, y + 13, 3, 5); ctx.fillRect(x + 7, y + 13, 3, 5);   // ноги
-    const weaponLength = player.weaponIndex ? 12 : 9;
-    ctx.fillStyle = weapon.color;
-    if (player.swingAnimTimer > 0) ctx.fillRect(player.facing > 0 ? x + 10 : x - weaponLength + 2, y + 7, weaponLength, 3);   // удар
-    else ctx.fillRect(player.facing > 0 ? x + 10 : x - 2, y + 1, 3, weaponLength);                                           // оружие в руке
+    const held = getSelectedItem();
+    if (held) {
+        const weaponLength = held.kind === 'weapon' && held.index ? 12 : 9;
+        ctx.fillStyle = getItemColor(held);
+        if (player.swingAnimTimer > 0 && held.kind === 'weapon') ctx.fillRect(player.facing > 0 ? x + 10 : x - weaponLength + 2, y + 7, weaponLength, 3);
+        else ctx.fillRect(player.facing > 0 ? x + 10 : x - 2, y + 1, 3, weaponLength);
+    }
     if (player.oxygen < player.maxOxygen) {    
         drawBar(playerCenterX() - 14, playerCenterY() - 20, 30, 4, player.oxygen / player.maxOxygen, '#3385ff') // кислород над игроком
     }
+}
+
+function drawItemIcon(item, x, y) {
+  ctx.fillStyle = getItemColor(item);
+  if (item.kind === 'weapon') {
+    ctx.fillRect(x + 20, y + 10, 5, 20);                           // лезвие
+    ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 15, y + 30, 15, 4); ctx.fillRect(x + 20, y + 34, 5, 6);   // гарда и рукоять
+  } else {
+    const isShovel = getItemData(item).family === 'shovel';
+    ctx.fillRect(isShovel ? x + 14 : x + 9, y + 9, isShovel ? 16 : 26, 6);   // головка: у лопаты короче, у кирки длиннее
+    ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 20, y + 15, 4, 24);          // ручка
+  }
+}
+
+function drawInventoryBar() {
+  const left = (CANVAS_WIDTH - (SLOT_COUNT * SLOT_SIZE + (SLOT_COUNT - 1) * SLOT_GAP)) / 2, top = CANVAS_HEIGHT - SLOT_SIZE - 10;
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    const x = left + i * (SLOT_SIZE + SLOT_GAP), isSelected = i === player.selectedSlot;
+    ctx.fillStyle = isSelected ? 'rgba(245,197,66,.25)' : 'rgba(0,0,0,.55)'; ctx.fillRect(x, top, SLOT_SIZE, SLOT_SIZE);
+    ctx.strokeStyle = isSelected ? '#f5c542' : '#5b6478'; ctx.lineWidth = isSelected ? 3 : 2; ctx.strokeRect(x + 1, top + 1, SLOT_SIZE - 2, SLOT_SIZE - 2);
+    ctx.fillStyle = '#9aa3b5'; ctx.font = '10px monospace'; ctx.textAlign = 'left'; ctx.fillText(i + 1, x + 4, top + 12);
+    if (player.inventory[i]) drawItemIcon(player.inventory[i], x, top);
+  }
+  const held = getSelectedItem();
+  if (held) { ctx.fillStyle = '#fff'; ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.fillText(getItemData(held).name, CANVAS_WIDTH / 2, top - 8); }
 }
 
 // Туман: неисследованное чёрное, далёкое исследованное затемнено
@@ -125,7 +153,9 @@ function drawFog(rowFrom, rowTo) {
 function drawBlockHighlight() {
     const col = Math.floor(mouse.x / TILE_SIZE), row = Math.floor((mouse.y + cameraY) / TILE_SIZE);
     if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT || !blocks[row][col] || (!explored[row][col] && !devModeEnabled)) return;
-    const tool = TOOLS[player.toolIndex];
+    const held = getSelectedItem();
+    if (!held || held.kind !== 'tool') return;                      // рамка только когда в руке инструмент
+    const tool = TOOLS[held.index];
     const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
     ctx.strokeStyle = distance <= tool.radiusTiles * TILE_SIZE + TILE_SIZE / 2 ? '#fff' : '#ff6b6b';
     ctx.lineWidth = 2;
@@ -139,6 +169,7 @@ function drawFloatingTexts() {
 
 // Элементы поверх экрана (не сдвигаются камерой)
 function drawScreenOverlay() {
+    drawInventoryBar();
     const depth = Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE));
     ctx.textAlign = 'left'; ctx.font = '12px monospace';
     ctx.fillStyle = '#000a'; ctx.fillRect(6, 6, 110, 20);

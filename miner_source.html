@@ -207,6 +207,7 @@
     const FOG_DIM_RADIUS = 8;             // дальше этого радиуса исследованная зона затемняется
     const FOG_SOLID_BLOCKS_VISIBLE = 1; // сколько твёрдых блоков "пробивает" взгляд: 1 = виден только первый блок, дальше туман
     const TURRET_RANGE = 130;             // дальность орудия базы от края базы (пиксели)
+    const SLOT_COUNT = 9, SLOT_SIZE = 44, SLOT_GAP = 4;
 
     // --- Пещеры ---
     const CAVE_WORM_COUNT = 12;            // сколько червеобразных ходов создаётся
@@ -286,23 +287,25 @@
     // --- Оружие (ЛКМ) ---
     // damage — урон, cooldown — секунд между ударами, energyCost — энергия за удар, radiusTiles — радиус в блоках
     const WEAPONS = [
-      {name: 'Палка', damage: 2, cooldown: 1, energyCost: 5, radiusTiles: 1, cost: 0, color: '#b58a4a'},
-      {name: 'Деревянный меч', damage: 4, cooldown: 1, energyCost: 10, radiusTiles: 2, cost: 50, color: '#d9a65a'},
-      {name: 'Каменный меч', damage: 10, cooldown: 0.8, energyCost: 15, radiusTiles: 2, cost: 500, color: '#a9b0b8'},
-      {name: 'Железный меч', damage: 18, cooldown: 0.7, energyCost: 23, radiusTiles: 3, cost: 3000, color: '#e0e0ea'},
-      {name: 'Кристальный меч', damage: 35, cooldown: 0.6, energyCost: 40, radiusTiles: 3, cost: 10000, color: '#4fd8e8'}];
+      {name: 'Палка', family: 'melee', tier: 1, damage: 2, cooldown: 1, energyCost: 5, radiusTiles: 1, cost: 0, color: '#b58a4a'},
+      {name: 'Деревянный меч', family: 'melee', tier: 2, damage: 4, cooldown: 1, energyCost: 10, radiusTiles: 2, cost: 50, color: '#d9a65a'},
+      {name: 'Каменный меч', family: 'melee', tier: 3, damage: 10, cooldown: 0.8, energyCost: 15, radiusTiles: 2, cost: 500, color: '#a9b0b8'},
+      {name: 'Железный меч', family: 'melee', tier: 4, damage: 18, cooldown: 0.7, energyCost: 23, radiusTiles: 3, cost: 3000, color: '#e0e0ea'},
+      {name: 'Кристальный меч', family: 'melee', tier: 5, damage: 35, cooldown: 0.6, energyCost: 40, radiusTiles: 3, cost: 10000, color: '#4fd8e8'}];
+
 
     // --- Инструменты (ПКМ) ---
     // level — какие блоки может копать, power — сколько крепкости снимает за удар
     const TOOLS = [
-      {name: 'Деревянная лопата', level: 1, power: 1, energyCost: 1, radiusTiles: 1, cost: 0},
-      {name: 'Каменная лопата', level: 1, power: 3, energyCost: 2, radiusTiles: 2, cost: 60},
-      {name: 'Деревянная кирка', level: 2, power: 5, energyCost: 3, radiusTiles: 1, cost: 450},
-      {name: 'Железная лопата', level: 2, power: 6, energyCost: 1, radiusTiles: 3, cost: 2500},
-      {name: 'Каменная кирка', level: 3, power: 8, energyCost: 4, radiusTiles: 2, cost: 6000},
-      {name: 'Железная кирка', level: 4, power: 14, energyCost: 6, radiusTiles: 2, cost: 12000},
-      {name: 'Кристальная кирка', level: 5, power: 24, energyCost: 9, radiusTiles: 3, cost: 25000}];
-
+      {name: 'Деревянная лопата', family: 'shovel', tier: 1, level: 1, power: 1, energyCost: 1, radiusTiles: 1, cost: 0, color: '#d9a65a'},
+      {name: 'Каменная лопата', family: 'shovel', tier: 2, level: 1, power: 3, energyCost: 2, radiusTiles: 2, cost: 60, color: '#a9b0b8'},
+      {name: 'Деревянная кирка', family: 'pickaxe', tier: 1, level: 2, power: 5, energyCost: 3, radiusTiles: 1, cost: 450, color: '#d9a65a'},
+      {name: 'Железная лопата', family: 'shovel', tier: 3, level: 2, power: 6, energyCost: 1, radiusTiles: 3, cost: 2500, color: '#e0e0ea'},
+      {name: 'Каменная кирка', family: 'pickaxe', tier: 2, level: 3, power: 8, energyCost: 4, radiusTiles: 2, cost: 6000, color: '#a9b0b8'},
+      {name: 'Железная кирка', family: 'pickaxe', tier: 3, level: 4, power: 14, energyCost: 6, radiusTiles: 2, cost: 12000, color: '#e0e0ea'},
+      {name: 'Кристальная кирка', family: 'pickaxe', tier: 4, level: 5, power: 24, energyCost: 9, radiusTiles: 3, cost: 25000, color: '#4fd8e8'}];
+    
+  
     // --- Орудие базы (индекс = уровень улучшения) ---
     const TURRET_LEVELS = [null, {damage: 3, cooldown: 1.5}, {damage: 6, cooldown: 1.1}, {damage: 12, cooldown: 0.8}];
 
@@ -605,6 +608,8 @@
         x: 10 * TILE_SIZE, y: GROUND_Y - 18, width: 12, height: 18,
         velocityX: 0, velocityY: 0, onGround: false, facing: 1,
         hp: 100, maxHp: 100, hpRegen: 0.5,
+        inventory: [{ kind: 'weapon', index: 0 }, { kind: 'tool', index: 0 }, ...Array(SLOT_COUNT - 2).fill(null)],
+        selectedSlot: 0,
         energy: 15, maxEnergy: 15, energyRegen: 1,
         oxygen: 50, maxOxygen: 50, oxygenRegen: 25,
         moveSpeed: 95, jumpPower: 290,
@@ -678,8 +683,6 @@
       createPlayer();
       points = 0;
       upgradeLevels = {};
-      ownedWeapons = WEAPONS.map((w, i) => i === 0);
-      ownedTools = TOOLS.map((t, i) => i === 0);
       baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0};
       enemies = []; floatingTexts = []; turretBeams = [];
       waveNumber = 0; waveActive = false; waveTimer = FIRST_WAVE_DELAY_SEC; spawnQueue = []; spawnTimer = 0;
@@ -707,6 +710,37 @@
     }
 
     /* ====================== 5. ДЕЙСТВИЯ ИГРОКА ====================== */
+    function getSelectedItem() { return player.inventory[player.selectedSlot]; }
+    function getItemData(item) { return item.kind === 'weapon' ? WEAPONS[item.index] : TOOLS[item.index]; }
+    function getItemColor(item) { return getItemData(item).color; }
+
+    // ЛКМ: используем то, что лежит в выбранной ячейке
+    function useSelectedItem() {
+      const item = getSelectedItem();
+      if (!item) return;
+      if (item.kind === 'weapon') { player.weaponIndex = item.index; playerAttack(); }
+      else { player.toolIndex = item.index; playerDig(); }
+    }
+
+    // Что случится при покупке: 'owned' (уже есть), 'obsolete' (есть лучше того же семейства),
+    // 'replace' (заменит слабый), 'add' (в пустую ячейку), 'full' (нет места)
+    function getInventoryStatus(kind, index) {
+      const newItem = getItemData({ kind, index });
+      for (const slot of player.inventory) {
+        if (!slot || slot.kind !== kind) continue;
+        const ownedItem = getItemData(slot);
+        if (ownedItem.family !== newItem.family) continue;
+        return slot.index === index ? 'owned' : ownedItem.tier > newItem.tier ? 'obsolete' : 'replace';
+      }
+      return player.inventory.includes(null) ? 'add' : 'full';
+    }
+
+    function addItemToInventory(kind, index) {
+      const family = getItemData({ kind, index }).family;
+      let slotIndex = player.inventory.findIndex(slot => slot && slot.kind === kind && getItemData(slot).family === family);
+      if (slotIndex === -1) slotIndex = player.inventory.indexOf(null);
+      if (slotIndex !== -1) player.inventory[slotIndex] = { kind, index };
+    }
 
     function teleportToBase() {
       if (isGameOver) return;
@@ -1012,8 +1046,7 @@
       updatePlayerMovement(dt);
       cameraY = Math.max(0, Math.min(WORLD_HEIGHT * TILE_SIZE - CANVAS_HEIGHT, playerCenterY() - CANVAS_HEIGHT / 2));
       revealAroundPlayer();
-      if (mouse.rightDown) playerDig();
-      if (mouse.leftDown) playerAttack();
+      if (mouse.leftDown) useSelectedItem();
       updateRegeneration(dt);
       updateOxygen(dt);
       updateMiningBase(dt);
@@ -1039,18 +1072,19 @@
       };
     }
 
+    function buildInventoryShopItem(kind, index, title, description, cost) {
+      const status = getInventoryStatus(kind, index);
+      const note = { owned: '', add: '', replace: ' · заменит текущий', obsolete: ' · есть лучше', full: ' · нет места в инвентаре' }[status];
+      const state = status === 'owned' ? 'equipped' : (status === 'obsolete' || status === 'full') ? 'max' : 'buy';
+      return { title, description: description + note, cost, state, onBuy: () => addItemToInventory(kind, index) };
+    }
+
     // Список товаров текущей вкладки. state: 'buy' (купить), 'own' (куплено, можно взять), 'equipped', 'max'
     function getShopItems() {
-      if (shopTab === 'Оружие') return WEAPONS.map((w, i) => ({
-        title: w.name, description: 'Урон ' + w.damage + ' · 1 удар/' + w.cooldown + 'с · энергия ' + w.energyCost + ' · радиус ' + w.radiusTiles + ' бл.',
-        cost: w.cost, state: player.weaponIndex === i ? 'equipped' : ownedWeapons[i] ? 'own' : 'buy',
-        onBuy: () => {ownedWeapons[i] = true; player.weaponIndex = i;}
-      }));
-      if (shopTab === 'Инструменты') return TOOLS.map((t, i) => ({
-        title: t.name, description: 'Уровень ' + t.level + ' · копание ' + t.power + ' ед. · энергия ' + t.energyCost + ' · радиус ' + t.radiusTiles + ' бл.',
-        cost: t.cost, state: player.toolIndex === i ? 'equipped' : ownedTools[i] ? 'own' : 'buy',
-        onBuy: () => {ownedTools[i] = true; player.toolIndex = i;}
-      }));
+      if (shopTab === 'Оружие') return WEAPONS.map((w, i) => buildInventoryShopItem('weapon', i, w.name,
+        'Урон ' + w.damage + ' · 1 удар/' + w.cooldown + 'с · энергия ' + w.energyCost + ' · радиус ' + w.radiusTiles + ' бл.', w.cost));
+      if (shopTab === 'Инструменты') return TOOLS.map((t, i) => buildInventoryShopItem('tool', i, t.name,
+        'Уровень ' + t.level + ' · копание ' + t.power + ' ед. · энергия ' + t.energyCost + ' · радиус ' + t.radiusTiles + ' бл.', t.cost));
       const items = SHOP_TABS[shopTab].map(buildUpgradeItem);
       if (shopTab === 'База') {
         const repairItem = baseState.hp < baseState.maxHp
@@ -1068,7 +1102,7 @@
       let html = '<div class="tabs">' + SHOP_TAB_NAMES.map(name => '<button data-tab="' + name + '" class="' + (name === shopTab ? 'on' : '') + '">' + name + '</button>').join('')
         + '<span style="margin-left:auto">Очки: <b style="color:var(--ac)">' + Math.floor(points) + '</b>' + (devModeEnabled ? ' · DEV' : '') + '</span></div>';
       html += currentShopItems.map((item, index) => {
-        const label = item.state === 'equipped' ? 'Экипировано' : item.state === 'own' ? 'Взять' : item.state === 'max' ? '—' : 'Купить ' + (devModeEnabled ? '0' : item.cost);
+        const label = item.state === 'equipped' ? 'В инвентаре' : item.state === 'own' ? 'Взять' : item.state === 'max' ? '—' : 'Купить ' + (devModeEnabled ? '0' : item.cost);
         const disabled = item.state === 'equipped' || item.state === 'max' || (item.state === 'buy' && !devModeEnabled && points < item.cost);
         return '<div class="it"><div>' + item.title + '<small>' + item.description + '</small></div><button data-i="' + index + '" ' + (disabled ? 'disabled' : '') + '>' + label + '</button></div>';
       }).join('');
@@ -1100,7 +1134,7 @@
       hudElement.innerHTML = '<span>Очки: <b>' + Math.floor(points) + '</b></span>'
         + '<span>HP: <b>' + Math.ceil(player.hp) + '/' + player.maxHp + '</b></span>'
         + '<span>Энергия: <b>' + Math.floor(player.energy) + '/' + player.maxEnergy + '</b></span>'
-        + '<span>' + WEAPONS[player.weaponIndex].name + ' · ' + TOOLS[player.toolIndex].name + '</span>'
+        + '<span style="color: yellow">' + (getSelectedItem() ? getItemData(getSelectedItem()).name : 'Пусто') + '</span>'
         + '<span>' + waveText + '</span>';
       devLabelElement.textContent = devModeEnabled ? 'DEV' : '';
       if (isShopOpen) renderShop(false);
@@ -1116,6 +1150,7 @@
       keysDown[event.code] = true;
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(event.code)) event.preventDefault();
       if (event.repeat) return;
+      if (/^Digit[1-9]$/.test(event.code) && !isShopOpen) player.selectedSlot = Number(event.code.slice(5)) - 1;
       if (event.code === 'KeyF') teleportToBase();
       if (event.code === 'Escape' && isShopOpen) { toggleShop(); return; }
       if (event.code === 'KeyB') toggleShop();
@@ -1139,6 +1174,15 @@
       if (event.button === 0) mouse.leftDown = false;
       if (event.button === 2) mouse.rightDown = false;
     });
+
+    let lastWheelTime = 0;
+    canvas.addEventListener('wheel', event => {
+      if (isShopOpen || isChartOpen || isGameOver) return;
+      event.preventDefault();                                          // страница не прокручивается
+      if (performance.now() - lastWheelTime < 80) return;              // защита от слишком быстрой прокрутки на тачпадах
+      lastWheelTime = performance.now();
+      player.selectedSlot = (player.selectedSlot + Math.sign(event.deltaY) + SLOT_COUNT) % SLOT_COUNT;
+    }, { passive: false });
 
     document.getElementById('callw').onclick = () => {if (!waveActive && !isGameOver) waveTimer = 0;};   // позвать волну без ожидания
     document.getElementById('okc').onclick = () => {                                                          // инструмент разработчика
