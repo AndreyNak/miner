@@ -1029,7 +1029,7 @@
       const items = SHOP_TABS[shopTab].map(buildUpgradeItem);
       if (shopTab === 'База') {
         const repairItem = baseState.hp < baseState.maxHp
-          ? {title: 'Починить базу', description: 'Полностью восстановить HP (' + Math.ceil(baseState.hp) + '/' + baseState.maxHp + ')', cost: Math.ceil(baseState.maxHp * 0.3), state: 'buy', onBuy: () => {baseState.hp = baseState.maxHp;}}
+          ? {title: 'Починить базу', description: 'Полностью восстановить HP (' + Math.ceil(baseState.hp) + '/' + baseState.maxHp + ')', cost: (baseState.maxHp - baseState.hp) * waveNumber, state: 'buy', onBuy: () => {baseState.hp = baseState.maxHp;}}
           : {title: 'Починить базу', description: 'База цела', state: 'max'};
         items.splice(2, 0, repairItem);                            // ремонт идёт третьим в списке базы
       }
@@ -1092,6 +1092,7 @@
       if (['Space', 'ArrowUp', 'ArrowDown'].includes(event.code)) event.preventDefault();
       if (event.repeat) return;
       if (event.code === 'KeyF') teleportToBase();
+      if (event.code === 'Escape' && isShopOpen) { toggleShop(); return; }
       if (event.code === 'KeyB') toggleShop();
     });
     addEventListener('keyup', event => {keysDown[event.code] = false;});
