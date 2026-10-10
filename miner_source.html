@@ -230,6 +230,31 @@
     const LADDER_PLACE_COOLDOWN = 0.15; // пауза между установками при зажатой кнопке
     const LADDER_ITEM = { name: 'Лестница', color: '#c8934a' };
 
+    //  Облака
+    const clouds = [
+      { x: 80,  y: 40, speed: 3,  scale: 1.0 },
+      { x: 300, y: 70, speed: 6, scale: 0.7 },
+      { x: 700, y: 30, speed: 2,  scale: 1.3 },
+      { x: 20, y: 100, speed: 3, scale: 0.9 },
+    ];
+
+    // Лес
+    function generateForest(spacing) {
+      const trees = [];
+      for (let x = 0; x < CANVAS_WIDTH + 100; x += spacing + Math.random() * spacing) {
+        trees.push({
+          x: x,
+          trunkHeight: 20 + Math.random() * 15,   // высота ствола
+          trunkWidth:  4 + Math.random() * 2,     // толщина ствола
+          crownSize:   20 + Math.random() * 15,   // диаметр кроны
+        });
+      }
+      return { trees };
+    }
+
+    const forestFar  = generateForest(70);
+    const forestNear = generateForest(50);
+
     // --- Блоки ---
     const BLOCK = {DIRT: 1, CLAY: 2, GRAVEL: 3, COBBLESTONE: 4, IRON_ORE: 5, CRYSTAL: 6, VOID_ORE: 7};
     // durability — крепкость, level — нужный уровень инструмента, points — очки за добычу
@@ -1117,9 +1142,20 @@
       }
     }
 
+    function updateClouds(dt) {
+      for (const cloud of clouds) {
+        cloud.x += cloud.speed * dt;
+        // ушло за правый край — вернулось слева
+        if (cloud.x > CANVAS_WIDTH + 100) {
+          cloud.x = -100;
+        }
+      }
+    }
+
     function updateGame(dt) {
       player.attackTimer -= dt; player.digTimer -= dt; player.teleportTimer -= dt; player.swingAnimTimer -= dt;
       messageTimer -= dt;
+      updateClouds(dt);
       updatePlayerMovement(dt);
       cameraY = Math.max(0, Math.min(WORLD_HEIGHT * TILE_SIZE - CANVAS_HEIGHT, playerCenterY() - CANVAS_HEIGHT / 2));
       revealAroundPlayer();

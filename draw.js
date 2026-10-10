@@ -28,9 +28,68 @@ function drawBar(x, y, width, height, fraction, color) {
 function drawSky() {
     ctx.fillStyle = '#6ec6ff'; ctx.fillRect(0, 0, CANVAS_WIDTH, GROUND_Y);
     ctx.fillStyle = '#8fd4ff'; ctx.fillRect(0, GROUND_Y - 120, CANVAS_WIDTH, 120);
+
+    drawSun();
+
     ctx.fillStyle = '#fff';
-    [[80, 40], [300, 70], [700, 30], [860, 90]].forEach(([x, y]) => {ctx.fillRect(x, y, 60, 12); ctx.fillRect(x + 12, y - 8, 36, 8);});
-    ctx.fillStyle = '#1a120b'; ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, WORLD_HEIGHT * TILE_SIZE - GROUND_Y);
+    for (const cloud of clouds) {
+    const w = 60 * cloud.scale, h = 12 * cloud.scale;
+    ctx.fillRect(cloud.x, cloud.y, w, h);
+    ctx.fillRect(cloud.x + 12 * cloud.scale, cloud.y - 8 * cloud.scale, 36 * cloud.scale, 8 * cloud.scale);
+    }
+
+    drawForest();
+    ctx.fillStyle = '#1a120b';
+    ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, WORLD_HEIGHT * TILE_SIZE - GROUND_Y);
+}
+
+function drawSun() {
+  const sunX = CANVAS_WIDTH - 200;
+  const sunY = 50;
+  const r = 24;
+
+  // свечение
+  ctx.fillStyle = 'rgba(255, 243, 160, 0.4)';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, r + 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ядро
+  ctx.fillStyle = '#ffd93b';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawForest() {
+  // дальний слой — бледные
+  drawTreeLayer(forestFar.trees,  GROUND_Y, '#6a4a2a', '#4ab14a');
+  // ближний слой — насыщенные
+  drawTreeLayer(forestNear.trees, GROUND_Y, '#4a2a1a', 'rgb(46, 133, 71)');
+}
+
+function drawTreeLayer(trees, baseY, trunkColor, crownColor) {
+  for (const tree of trees) {
+    const x = tree.x;
+    if (x < -60 || x > CANVAS_WIDTH + 60) continue;
+
+    const trunkH = tree.trunkHeight;
+    const trunkW = tree.trunkWidth;
+    const r = tree.crownSize / 2;
+
+    // ствол
+    ctx.fillStyle = trunkColor;
+    ctx.fillRect(x, baseY - trunkH, trunkW, trunkH);
+
+    // крона — три круга
+    const cx = x + trunkW / 2;
+    const cy = baseY - trunkH - r * 0.5;
+
+    ctx.fillStyle = crownColor;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - r * 0.6, cy + r * 0.3, r * 0.7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + r * 0.6, cy + r * 0.3, r * 0.7, 0, Math.PI * 2); ctx.fill();
+  }
 }
 
 function drawTerrain(rowFrom, rowTo) {
