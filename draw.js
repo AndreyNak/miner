@@ -123,8 +123,8 @@ function drawBase() {
     ctx.fillStyle = '#ffd966'; ctx.fillRect(BASE_LEFT + 22, BASE_TOP + 50, 20, 16); ctx.fillRect(BASE_LEFT + BASE_WIDTH - 42, BASE_TOP + 50, 20, 16);   // окна
     if (baseState.turretLevel) {ctx.fillStyle = '#333'; ctx.fillRect(BASE_CENTER_X - 8, BASE_TOP - 34, 16, 10); ctx.fillStyle = '#ffe066'; ctx.fillRect(BASE_CENTER_X - 3, BASE_TOP - 38, 6, 6);}
     ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
-    ctx.fillText(baseState.hp + "/" + baseState.maxHp, BASE_CENTER_X, BASE_TOP - 30);
-    drawBar(BASE_LEFT, BASE_TOP - 48, BASE_WIDTH, 6, Math.round(baseState.hp / baseState.maxHp), '#e53935');
+    ctx.fillText(Math.round(baseState.hp) + "/" + baseState.maxHp, BASE_CENTER_X, BASE_TOP - 30);
+    drawBar(BASE_LEFT, BASE_TOP - 48, BASE_WIDTH, 6, baseState.hp / baseState.maxHp, '#e53935');
     if (isPlayerInBaseZone() && !isShopOpen) {
     ctx.fillStyle = '#000a'; ctx.fillRect(BASE_CENTER_X - 60, BASE_TOP - 80, 120, 20);
     ctx.fillStyle = '#f5c542'; ctx.fillText('B — магазин', BASE_CENTER_X, BASE_TOP - 66);

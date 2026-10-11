@@ -21,6 +21,12 @@ function resetIncomeStats() {
     drawIncomeChart();
 }
 
+function logWaveCleared(wave) {
+    recordIncomeSample();
+    purchaseLog.push({ time: gameTimeSec, name: 'Волна ' + wave, color: '#ff5555' });
+    drawIncomeChart();
+}
+
 // Записывает точку: доход в минуту за последние INCOME_WINDOW_SEC секунд
 function recordIncomeSample() {
     const windowStart = gameTimeSec - INCOME_WINDOW_SEC;
@@ -122,7 +128,7 @@ function drawIncomeChart() {
     const x = xOf(purchase.time), y = yOf(getIncomeRateAt(purchase.time));
     c.strokeStyle = '#5b6478'; c.lineWidth = 1; c.setLineDash([3, 3]);
     c.beginPath(); c.moveTo(x, height - bottom); c.lineTo(x, y); c.stroke(); c.setLineDash([]);
-    c.fillStyle = '#7CFC8A'; c.beginPath(); c.arc(x, y, 3.5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = purchase.color || '#7CFC8A'; c.beginPath(); c.arc(x, y, 3.5, 0, Math.PI * 2); c.fill();
 
     const label = purchase.name.length > 26 ? purchase.name.slice(0, 25) + '…' : purchase.name;
     const labelX = Math.min(width - 6, Math.max(x, lastLabelX + 13));     // подписи не наезжают друг на друга

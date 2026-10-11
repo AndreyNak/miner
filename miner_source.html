@@ -282,7 +282,7 @@
     const DYNAMITE_LEVELS = [
       { maxBlockLevel: 3, damage: 50, packPrice: 800 },
       { maxBlockLevel: 4, damage: 100, packPrice: 1500 },
-      { maxBlockLevel: 5, damage: 200, packPrice: 3000 }];
+      { maxBlockLevel: 5, damage: 200, packPrice: 2000 }];
     
     const BLOCK_LAYERS = [
       {
@@ -416,7 +416,7 @@
         apply: v => player.hpRegen = v
       },
       maxOxygen: {
-        title: 'Макс. кислорода', steps: [[60, 200], [1200, 850], [6500, 3500], [10000, 8000]],
+        title: 'Макс. кислорода', steps: [[60, 200], [1200, 850], [6500, 3500], [10000, 8000], [20000, 15000]],
         describe: () => 'Сейчас ' + player.maxOxygen, format: v => v,
         apply: v => {player.oxygen += v - player.maxOxygen; player.maxOxygen = v;}
       },
@@ -1101,7 +1101,8 @@
         waveActive = false;
         waveTimer = Math.min(waveNumber + 3, MAX_WAVE_DELAY_MIN) * 60;    // 4, 5, 6...
         const bonus = getWaveBonus(waveNumber);
-        earnPoints(bonus);
+        points += bonus;
+        logWaveCleared(waveNumber);
         showMessage('Волна ' + waveNumber + ' отбита! Награда +' + bonus);
       }
     }
