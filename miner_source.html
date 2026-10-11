@@ -225,10 +225,20 @@
     const LADDER_PACK_SIZE = 10;        // сколько лестниц в одной покупке
     const LADDER_PACK_PRICE = 40;       // цена пачки
     const LADDER_STACK_LIMIT = 100;     // максимум лестниц в инвентаре
-    const LADDER_CLIMB_SPEED = 70;      // скорость подъёма и спуска (пиксели в секунду)
+    const LADDER_CLIMB_SPEED = 180;      // скорость подъёма и спуска (пиксели в секунду)
     const LADDER_REACH_TILES = 3;       // на каком расстоянии от игрока можно поставить лестницу
-    const LADDER_PLACE_COOLDOWN = 0.15; // пауза между установками при зажатой кнопке
+    const LADDER_PLACE_COOLDOWN = 0.5; // пауза между установками при зажатой кнопке
     const LADDER_ITEM = { name: 'Лестница', color: '#c8934a' };
+
+     // --- Динамит ---
+    const DYNAMITE_FUSE_SEC = 3;             // через сколько секунд взрыв
+    const DYNAMITE_RADIUS_TILES = 3.5;       // радиус взрыва (не улучшается)
+    const DYNAMITE_REACH_TILES = 3;          // на каком расстоянии от игрока можно поставить
+    const DYNAMITE_PLACE_COOLDOWN = 0.4;     // пауза между установками при зажатой кнопке
+    const DYNAMITE_PACK_SIZE = 5;            // сколько штук в одной покупке
+    const DYNAMITE_STACK_LIMIT = 10;         // максимум в инвентаре
+    const EXPLOSION_ANIM_SEC = 0.35;         // длительность вспышки взрыва
+    const DYNAMITE_ITEM = { name: 'Динамит', color: '#d33a2c' };
 
     //  Облака
     const clouds = [
@@ -267,6 +277,12 @@
       {name: 'кристалл', durability: 60, level: 5, points: 120, colors: ['#2a3a5a', '#4fd8e8', '#2a6a8a', '#a8f4ff']},
       {name: 'порода бездны', durability: 999, level: 6, points: 500, colors: ['#251e2b', '#653747', '#b66a4a', '#d9b77e']}
     ];
+
+    // Уровни динамита: до какого уровня руды рвёт, урон в центре взрыва, цена пачки
+    const DYNAMITE_LEVELS = [
+      { maxBlockLevel: 3, damage: 50, packPrice: 800 },
+      { maxBlockLevel: 4, damage: 100, packPrice: 1500 },
+      { maxBlockLevel: 5, damage: 200, packPrice: 3000 }];
     
     const BLOCK_LAYERS = [
       {
@@ -309,7 +325,7 @@
       },
       {
         maxDepth: Infinity,
-        oxygenCost: 100,
+        oxygenCost: 150,
         blocks: [
           [BLOCK.COBBLESTONE, 70],
           [BLOCK.IRON_ORE, 25],
@@ -409,6 +425,11 @@
         describe: () => 'Сейчас ' + player.oxygenRegen + '/сек', format: v => v,
         apply: v => player.oxygenRegen = v
       },
+      oxygenFreeDepth: {
+        title: 'Глубина потребления кислорода', steps: [[400, 15], [1500, 30], [6000, 45], [15000, 60]],
+        describe: () => ' Сейчас ' + player.oxygenFreeDepth, format: v => v,
+        apply: v => player.oxygenFreeDepth = v
+      },
       moveSpeed: {
         title: 'Скорость бега', steps: [[50, 110], [800, 130], [6000, 155]],
         describe: () => 'Сейчас ' + player.moveSpeed, format: v => v,
@@ -425,7 +446,7 @@
         apply: v => player.armor = v
       },
       luck: {
-        title: 'Удача шахтёра', steps: [[80, 0.25], [1500, 0.5], [9000, 1]],
+        title: 'Удача шахтёра', steps: [[80, 0.25], [1500, 0.35], [9000, 0.45]],
         describe: () => 'Бонус очков с блоков: +' + formatPercent(player.luck), format: v => '+' + formatPercent(v),
         apply: v => player.luck = v
       },
@@ -435,9 +456,15 @@
         apply: v => player.energySaving = v
       },
       teleportCooldown: {
-        title: 'Перезарядка телепорта', steps: [[200, 20], [800, 16], [5000, 10]],
+        title: 'Перезарядка телепорта', steps: [[200, 30], [800, 25], [3500, 20], [10000, 15]],
         describe: () => 'Сейчас ' + player.teleportCooldownSec + ' с', format: v => v + ' с',
         apply: v => player.teleportCooldownSec = v
+      },
+      dynamite: { 
+        title: 'Улучшение динамита', steps: [[15000, 1], [25000, 2]],
+        describe: () => { const s = getDynamiteStats(); return 'Сейчас: Ломает руду до ур. ' + s.maxBlockLevel},
+        format: v => 'Ломает руду до ур. ' + DYNAMITE_LEVELS[v].maxBlockLevel,
+        apply: () => {} 
       },
       baseEnergyRegen: {
         title: 'Регенерация энергии у базы', steps: [[150, 15], [800, 30], [3500, 45], [9000, 80]],
@@ -473,7 +500,7 @@
     };
     // Какие улучшения показывать на вкладках магазина
     const SHOP_TABS = {
-      'Персонаж': ['energy', 'energyRegen', 'maxHp', 'hpRegen', 'maxOxygen', 'oxygenRegen', 'moveSpeed', 'jumpPower', 'armor', 'luck', 'energySaving', 'teleportCooldown'],
+      'Персонаж': ['energy', 'energyRegen', 'maxHp', 'hpRegen', 'maxOxygen', 'oxygenRegen', 'oxygenFreeDepth', 'moveSpeed', 'jumpPower', 'armor', 'luck', 'energySaving', 'teleportCooldown'],
       'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret']
     };
     const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База', 'Расходники'];
@@ -501,6 +528,8 @@
     let enemies = [];           // все враги: и волны, и пещерные слизни
     let floatingTexts = [];     // всплывающие числа (+очки, -урон)
     let turretBeams = [];       // вспышки выстрелов орудия базы
+    let dynamites = [];         // поставленный динамит: { col, row, timer }
+    let explosions = [];        // вспышки взрывов для отрисовки
 
     let points = 0;             // очки игрока
     let baseState;              // состояние базы (HP, регенерация, орудие)
@@ -650,7 +679,7 @@
         inventory: [{ kind: 'weapon', index: 0 }, { kind: 'tool', index: 0 }, ...Array(SLOT_COUNT - 2).fill(null)],
         selectedSlot: 0,
         energy: 15, maxEnergy: 15, energyRegen: 1,
-        oxygen: 50, maxOxygen: 50, oxygenRegen: 25,
+        oxygen: 50, maxOxygen: 50, oxygenRegen: 25, oxygenFreeDepth: 10,
         moveSpeed: 95, jumpPower: 290,
         armor: 0,             // доля снижения урона
         luck: 0,              // бонус очков с блоков
@@ -723,6 +752,7 @@
       points = 0;
       upgradeLevels = {};
       baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0};
+      dynamites = []; explosions = [];
       enemies = []; floatingTexts = []; turretBeams = [];
       waveNumber = 0; waveActive = false; waveTimer = FIRST_WAVE_DELAY_SEC; spawnQueue = []; spawnTimer = 0;
       turretTimer = 0; isGameOver = false; messageText = ''; messageTimer = 0;
@@ -753,6 +783,7 @@
     function getItemData(item) {
       if (item.kind === 'weapon') return WEAPONS[item.index];
       if (item.kind === 'tool') return TOOLS[item.index];
+      if (item.kind === 'dynamite') return DYNAMITE_ITEM;
       return LADDER_ITEM;
     }
     function getItemColor(item) { return getItemData(item).color; }
@@ -764,6 +795,7 @@
       if (item.kind === 'weapon') { player.weaponIndex = item.index; playerAttack(); }
       else if (item.kind === 'tool') { player.toolIndex = item.index; playerDig(); }
       else if (item.kind === 'ladder') placeLadder();
+      else if (item.kind === 'dynamite') placeDynamite();
     }
 
     function ladderAt(col, row) {
@@ -808,12 +840,62 @@
       return false;
     }
 
-    // Работа со стопкой лестниц в инвентаре
-    function findLadderSlot() { return player.inventory.findIndex(slot => slot && slot.kind === 'ladder'); }
-    function countLadders() { const i = findLadderSlot(); return i === -1 ? 0 : player.inventory[i].count; }
-    function addLadders(amount) {
-      let i = findLadderSlot();
-      if (i === -1) { i = player.inventory.indexOf(null); player.inventory[i] = { kind: 'ladder', count: 0 }; }
+    function getDynamiteStats() { return DYNAMITE_LEVELS[upgradeLevels.dynamite || 0]; }
+
+    // ЛКМ с динамитом: ставим в пустую клетку; динамит падает вниз до ближайшего твёрдого блока
+    function placeDynamite() {
+      if (player.digTimer > 0 || isGameOver) return;
+      const col = Math.floor(mouse.x / TILE_SIZE), row = Math.floor((mouse.y + cameraY) / TILE_SIZE);
+      if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT || blocks[row][col]) return;
+      const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
+      if (distance > DYNAMITE_REACH_TILES * TILE_SIZE + TILE_SIZE / 2) return;
+      let landingRow = row;
+      while (landingRow + 1 < WORLD_HEIGHT && !blocks[landingRow + 1][col]) landingRow++;
+      dynamites.push({ col, row: landingRow, timer: DYNAMITE_FUSE_SEC });
+      player.digTimer = DYNAMITE_PLACE_COOLDOWN;
+      const stack = player.inventory[player.selectedSlot];
+      stack.count--;
+      if (stack.count <= 0) player.inventory[player.selectedSlot] = null;
+    }
+    function explodeDynamite(col, row) {
+      const stats = getDynamiteStats();
+      const centerX = col * TILE_SIZE + TILE_SIZE / 2, centerY = row * TILE_SIZE + TILE_SIZE / 2;
+      const radiusPx = DYNAMITE_RADIUS_TILES * TILE_SIZE, reach = Math.ceil(DYNAMITE_RADIUS_TILES);
+
+      // Блоки: рвутся только те, чей уровень не выше уровня динамита. Лестницы в радиусе ломаются всегда
+      let totalReward = 0;
+      for (let r = row - reach; r <= row + reach; r++)
+        for (let c = col - reach; c <= col + reach; c++) {
+          if (c < 0 || c >= WORLD_WIDTH || r < 0 || r >= WORLD_HEIGHT - 1) continue;      // нижний слой мира не взрывается
+          if (Math.hypot(c * TILE_SIZE + TILE_SIZE / 2 - centerX, r * TILE_SIZE + TILE_SIZE / 2 - centerY) > radiusPx) continue;
+          ladders[r][c] = false;
+          const blockType = blocks[r][c];
+          if (!blockType || BLOCK_TYPES[blockType].level > stats.maxBlockLevel) continue;
+          blocks[r][c] = 0;
+          blockDurability[r][c] = 0;
+          totalReward += BLOCK_TYPES[blockType].points * (1 + player.luck);
+        }
+      totalReward = Math.round(totalReward);
+      if (totalReward > 0) { earnPoints(totalReward); addFloatingText(centerX, centerY - 10, '+' + totalReward, '#f5c542'); }
+
+      // Существа: урон в центре 100%, на краю радиуса 50%
+      const damageAt = distance => Math.max(1, Math.round(stats.damage * (1 - 0.5 * distance / radiusPx)));
+      for (const enemy of [...enemies]) {                                                  // копия списка: damageEnemy удаляет убитых
+        const distance = Math.hypot(enemy.x - centerX, (enemy.y - 5) - centerY);
+        if (distance <= radiusPx) damageEnemy(enemy, damageAt(distance));
+      }
+      const playerDistance = Math.hypot(playerCenterX() - centerX, playerCenterY() - centerY);
+      if (playerDistance <= radiusPx) damagePlayer(damageAt(playerDistance));              // броня игрока снижает урон
+
+      explosions.push({ x: centerX, y: centerY, radius: radiusPx, timer: EXPLOSION_ANIM_SEC });
+    }
+
+    // Работа со стопкой в инвентаре
+    function findStackSlot(kind) { return player.inventory.findIndex(slot => slot && slot.kind === kind); }
+    function countStack(kind) { const i = findStackSlot(kind); return i === -1 ? 0 : player.inventory[i].count; }
+    function addToStack(kind, amount) {
+      let i = findStackSlot(kind);
+      if (i === -1) { i = player.inventory.indexOf(null); player.inventory[i] = { kind, count: 0 }; }
       player.inventory[i].count += amount;
     }
 
@@ -978,12 +1060,12 @@
     }
 
     function getWaveBonus(wave) {
-      const bonuses = {1: 90, 2: 180, 3: 400, 4: 800, 5: 1500, 6: 2200, 7: 2800, 8: 4000, 9: 7000, 10: 12000}
+      const bonuses = {1: 90, 2: 180, 3: 400, 4: 800, 5: 1500, 6: 2200, 7: 2800, 8: 3500, 9: 4200, 10: 5000}
       if (bonuses[wave]) {
         return bonuses[wave]
       }
       
-      return  2000 * (wave - 3)
+      return  1000 * (wave - 3)
     }
 
     function startWave() {
@@ -1105,7 +1187,7 @@
       const NoOxygenMultiplyDamage = 5
       const depth = Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE));
       const layer = BLOCK_LAYERS.find(layer => depth < layer.maxDepth);
-      if (layer.maxDepth <= 10) {
+      if (depth <= player.oxygenFreeDepth) {
         player.oxygen = Math.min(player.maxOxygen, player.oxygen) + (player.oxygenRegen * dt); return  
       } else {
         if (player.oxygen >= 0) {
@@ -1115,6 +1197,17 @@
         }
       }
 
+    }
+
+    function updateDynamites(dt) {
+      for (let i = dynamites.length - 1; i >= 0; i--) {
+        dynamites[i].timer -= dt;
+        if (dynamites[i].timer <= 0) { const dynamite = dynamites.splice(i, 1)[0]; explodeDynamite(dynamite.col, dynamite.row); }
+      }
+      for (let i = explosions.length - 1; i >= 0; i--) {
+        explosions[i].timer -= dt;
+        if (explosions[i].timer <= 0) explosions.splice(i, 1);
+      }
     }
 
     function updateMiningBase(dt) {
@@ -1168,6 +1261,7 @@
       updateWaves(dt);
       updateIncomeStats(dt);
       updateEnemies(dt);
+      updateDynamites(dt);
       checkDefeat();
       updateFloatingTexts(dt);
     }
@@ -1192,18 +1286,29 @@
       return { title, description: description + note, cost, state, onBuy: () => addItemToInventory(kind, index) };
     }
 
-    function buildLadderShopItem() {
-      const owned = countLadders();
-      const hasSlot = findLadderSlot() !== -1 || player.inventory.includes(null);
-      const stackFull = owned + LADDER_PACK_SIZE > LADDER_STACK_LIMIT;
+    function buildStackShopItem(kind, title, description, packSize, price, stackLimit) {
+      const owned = countStack(kind);
+      const hasSlot = findStackSlot(kind) !== -1 || player.inventory.includes(null);
+      const stackFull = owned + packSize > stackLimit;
       const note = stackFull ? ' · стопка полная' : !hasSlot ? ' · нет места в инвентаре' : '';
-      return { title: 'Лестницы ×' + LADDER_PACK_SIZE, description: 'ЛКМ — поставить у опоры · у тебя: ' + owned + '/' + LADDER_STACK_LIMIT + note,
-              cost: LADDER_PACK_PRICE, state: stackFull || !hasSlot ? 'max' : 'buy', onBuy: () => addLadders(LADDER_PACK_SIZE) };
+      return { title, description: description + ' · у тебя: ' + owned + '/' + stackLimit + note, cost: price,
+              state: stackFull || !hasSlot ? 'max' : 'buy', onBuy: () => addToStack(kind, packSize) };
+    }
+
+    function buildLadderShopItem() {
+      return buildStackShopItem('ladder', 'Лестницы ×' + LADDER_PACK_SIZE, 'Ставить у опоры', LADDER_PACK_SIZE, LADDER_PACK_PRICE, LADDER_STACK_LIMIT);
+    }
+
+    function buildDynamiteShopItem() {
+      const stats = getDynamiteStats();
+      return buildStackShopItem('dynamite', 'Динамит ×' + DYNAMITE_PACK_SIZE,
+        'Ломает руду до ур. ' + stats.maxBlockLevel + ' · урон ' + stats.damage,
+        DYNAMITE_PACK_SIZE, stats.packPrice, DYNAMITE_STACK_LIMIT);
     }
 
     // Список товаров текущей вкладки. state: 'buy' (купить), 'own' (куплено, можно взять), 'equipped', 'max'
     function getShopItems() {
-      if (shopTab === 'Расходники') return [buildLadderShopItem()];
+      if (shopTab === 'Расходники') return [buildLadderShopItem(), buildDynamiteShopItem(), buildUpgradeItem('dynamite')];
       if (shopTab === 'Оружие') return WEAPONS.map((w, i) => buildInventoryShopItem('weapon', i, w.name,
         'Урон ' + w.damage + ' · 1 удар/' + w.cooldown + 'с · энергия ' + w.energyCost + ' · радиус ' + w.radiusTiles + ' бл.', w.cost));
       if (shopTab === 'Инструменты') return TOOLS.map((t, i) => buildInventoryShopItem('tool', i, t.name,

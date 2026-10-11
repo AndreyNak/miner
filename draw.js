@@ -124,7 +124,7 @@ function drawBase() {
     if (baseState.turretLevel) {ctx.fillStyle = '#333'; ctx.fillRect(BASE_CENTER_X - 8, BASE_TOP - 34, 16, 10); ctx.fillStyle = '#ffe066'; ctx.fillRect(BASE_CENTER_X - 3, BASE_TOP - 38, 6, 6);}
     ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
     ctx.fillText(baseState.hp + "/" + baseState.maxHp, BASE_CENTER_X, BASE_TOP - 30);
-    drawBar(BASE_LEFT, BASE_TOP - 48, BASE_WIDTH, 6, baseState.hp / baseState.maxHp, '#e53935');
+    drawBar(BASE_LEFT, BASE_TOP - 48, BASE_WIDTH, 6, Math.round(baseState.hp / baseState.maxHp), '#e53935');
     if (isPlayerInBaseZone() && !isShopOpen) {
     ctx.fillStyle = '#000a'; ctx.fillRect(BASE_CENTER_X - 60, BASE_TOP - 80, 120, 20);
     ctx.fillStyle = '#f5c542'; ctx.fillText('B — магазин', BASE_CENTER_X, BASE_TOP - 66);
@@ -179,6 +179,13 @@ function drawItemIcon(item, x, y) {
     for (let rung = 0; rung < 4; rung++) ctx.fillRect(x + 12, y + 13 + rung * 7, 20, 3);   // перекладины
     return;
   }
+  if (item.kind === 'dynamite') {
+    ctx.fillRect(x + 16, y + 12, 12, 24);                                                   // шашка
+    ctx.fillStyle = '#f2d9a0'; ctx.fillRect(x + 16, y + 21, 12, 4);                         // полоска
+    ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 21, y + 6, 2, 6);                           // фитиль
+    ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 20, y + 3, 4, 4);                           // искра
+    return;
+  }
   if (item.kind === 'weapon') {
     ctx.fillRect(x + 20, y + 10, 5, 20);                           // лезвие
     ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 15, y + 30, 15, 4); ctx.fillRect(x + 20, y + 34, 5, 6);   // гарда и рукоять
@@ -199,7 +206,7 @@ function drawInventoryBar() {
     const item = player.inventory[i];
     if (item) {
       drawItemIcon(item, x, top);
-      if (item.kind === 'ladder') { ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'right'; ctx.fillText(item.count, x + SLOT_SIZE - 4, top + SLOT_SIZE - 5); }
+      if (item.count) { ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'right'; ctx.fillText(item.count, x + SLOT_SIZE - 4, top + SLOT_SIZE - 5); }
     }
   }
   const held = getSelectedItem();
@@ -218,14 +225,38 @@ function drawLadders() {
     }
 }
 
+// Динамит мигает: свой цвет и белый (80% белизны), чем ближе взрыв, тем чаще
+function drawDynamites() {
+  for (const dynamite of dynamites) {
+    const x = dynamite.col * TILE_SIZE, y = dynamite.row * TILE_SIZE;
+    const elapsed = DYNAMITE_FUSE_SEC - dynamite.timer;
+    const isFlashing = Math.floor(elapsed * (1.5 + 1.5 * elapsed) * 2) % 2 === 1;
+    ctx.fillStyle = DYNAMITE_ITEM.color; ctx.fillRect(x + 6, y + 5, 8, 15);               // шашка
+    ctx.fillStyle = '#f2d9a0'; ctx.fillRect(x + 6, y + 10, 8, 3);                         // полоска
+    if (isFlashing) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x + 6, y + 5, 8, 15); }
+    ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 9, y + 2, 2, 4);                          // фитиль
+    ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 8, y, 4, 3);                              // искра
+  }
+}
+
+function drawExplosions() {
+  for (const explosion of explosions) {
+    const progress = 1 - explosion.timer / EXPLOSION_ANIM_SEC;
+    ctx.fillStyle = 'rgba(255,170,40,' + (0.6 * (1 - progress)) + ')';
+    ctx.beginPath(); ctx.arc(explosion.x, explosion.y, explosion.radius * (0.4 + 0.6 * progress), 0, Math.PI * 2); ctx.fill();
+  }
+}
+
 // Рамка в клетке, куда встанет лестница: зелёная — можно, красная — нельзя
 function drawLadderPlacementPreview() {
   const held = getSelectedItem();
-  if (!held || held.kind !== 'ladder') return;
+  if (!held || (held.kind !== 'ladder' && held.kind !== 'dynamite')) return;
   const col = Math.floor(mouse.x / TILE_SIZE), row = Math.floor((mouse.y + cameraY) / TILE_SIZE);
-  if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT || blocks[row][col] || ladders[row][col]) return;
+  if (col < 0 || col >= WORLD_WIDTH || row < 0 || row >= WORLD_HEIGHT || blocks[row][col]) return;
+  if (held.kind === 'ladder' && ladders[row][col]) return;
+  const reach = held.kind === 'ladder' ? LADDER_REACH_TILES : DYNAMITE_REACH_TILES;
   const distance = Math.hypot(col * TILE_SIZE + TILE_SIZE / 2 - playerCenterX(), row * TILE_SIZE + TILE_SIZE / 2 - playerCenterY());
-  const canPlace = distance <= LADDER_REACH_TILES * TILE_SIZE + TILE_SIZE / 2 && hasLadderSupport(col, row);
+  const canPlace = distance <= reach * TILE_SIZE + TILE_SIZE / 2 && (held.kind === 'dynamite' || hasLadderSupport(col, row));
   ctx.strokeStyle = canPlace ? '#7CFC8A' : '#ff6b6b'; ctx.lineWidth = 2;
   ctx.strokeRect(col * TILE_SIZE + 1, row * TILE_SIZE + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 }
@@ -306,10 +337,12 @@ function render() {
     const rowTo = Math.min(WORLD_HEIGHT - 1, Math.ceil((cameraY + CANVAS_HEIGHT) / TILE_SIZE));
     drawTerrain(rowFrom, rowTo);
     drawLadders();
+    drawDynamites();
     drawBase();
     drawEnemies();
     drawTurretBeams();
     drawPlayer();
+    drawExplosions();
     drawFog(rowFrom, rowTo);
     drawBlockHighlight();
     drawLadderPlacementPreview();
