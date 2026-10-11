@@ -1317,7 +1317,7 @@
       const items = SHOP_TABS[shopTab].map(buildUpgradeItem);
       if (shopTab === 'База') {
         const repairItem = baseState.hp < baseState.maxHp
-          ? {title: 'Починить базу', description: 'Полностью восстановить HP (' + Math.ceil(baseState.hp) + '/' + baseState.maxHp + ')', cost: (baseState.maxHp - baseState.hp) * waveNumber, state: 'buy', onBuy: () => {baseState.hp = baseState.maxHp;}}
+          ? {title: 'Починить базу', description: 'Полностью восстановить HP (' + Math.ceil(baseState.hp) + '/' + baseState.maxHp + ')', cost: Math.ceil((baseState.maxHp - baseState.hp) * waveNumber), state: 'buy', onBuy: () => {baseState.hp = baseState.maxHp;}}
           : {title: 'Починить базу', description: 'База цела', state: 'max'};
         items.splice(2, 0, repairItem);                            // ремонт идёт третьим в списке базы
       }
