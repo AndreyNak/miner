@@ -78,6 +78,10 @@
       font: 12px monospace
     }
 
+    #teleportButton{position:absolute;top:42px;right:6px;z-index:6;width:46px;height:46px;border:none;border-radius:50%;padding:4px;box-sizing:border-box;cursor:pointer;
+      background:conic-gradient(#7CFC8A calc(var(--ready, 1) * 360deg), #2a3040 0)}
+    #teleportButton .inner{width:100%;height:100%;border-radius:50%;background:#14161c;display:flex;align-items:center;justify-content:center;color:var(--tx);font:bold 14px monospace}
+
     #modal {
       position: absolute;
       left: 50%;
@@ -155,8 +159,12 @@
   <div id="hud"></div>
   <div id="wrap">
     <canvas id="c" width="960" height="540"></canvas>
-    <div id="dev"><span id="devs"></span><input id="code" placeholder="код разраб." autocomplete="off"><button
-        id="okc">OK</button></div>
+    <div id="dev">
+        <span id="devs"></span>
+        <input id="code" placeholder="код разраб." autocomplete="off">
+        <button id="okc">OK</button>
+    </div>
+    <button id="teleportButton" title="Телепорт на базу (F)"><span class="inner" id="teleportLabel"></span></button>
     <div id="modal" class="h"></div>
   </div>
   <div id="chartOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0d0f14">
@@ -405,6 +413,11 @@
         describe: () => 'Сейчас ' + player.energyRegen + '/сек вне базы', format: v => v + '/сек',
         apply: v => player.energyRegen = v
       },
+      energySaving: {
+        title: 'Экономия энергии', steps: [[200, 0.15], [1500, 0.2], [6500, 0.3]],
+        describe: () => 'Меньше затраты на удары и копание: −' + formatPercent(player.energySaving), format: formatPercent,
+        apply: v => player.energySaving = v
+      },
       maxHp: {
         title: 'Макс. HP', steps: [[40, 150], [200, 200], [1100, 300], [8000, 450]],
         describe: () => 'Сейчас ' + player.maxHp, format: v => v,
@@ -414,6 +427,11 @@
         title: 'Регенерация HP', steps: [[60, 1], [1200, 3], [8800, 7]],
         describe: () => 'Сейчас ' + player.hpRegen + '/сек вне базы', format: v => v + '/сек',
         apply: v => player.hpRegen = v
+      },
+      armor: {
+        title: 'Броня', steps: [[150, 0.1], [800, 0.2], [3500, 0.35]],
+        describe: () => 'Снижает урон на ' + formatPercent(player.armor), format: formatPercent,
+        apply: v => player.armor = v
       },
       maxOxygen: {
         title: 'Макс. кислорода', steps: [[60, 200], [1200, 850], [6500, 3500], [10000, 8000], [20000, 15000]],
@@ -440,20 +458,10 @@
         describe: () => 'Сейчас ' + player.jumpPower, format: v => v,
         apply: v => player.jumpPower = v
       },
-      armor: {
-        title: 'Броня', steps: [[150, 0.1], [800, 0.2], [3500, 0.35]],
-        describe: () => 'Снижает урон на ' + formatPercent(player.armor), format: formatPercent,
-        apply: v => player.armor = v
-      },
       luck: {
         title: 'Удача шахтёра', steps: [[80, 0.25], [1500, 0.35], [9000, 0.45]],
         describe: () => 'Бонус очков с блоков: +' + formatPercent(player.luck), format: v => '+' + formatPercent(v),
         apply: v => player.luck = v
-      },
-      energySaving: {
-        title: 'Экономия энергии', steps: [[200, 0.15], [1500, 0.2], [6500, 0.3]],
-        describe: () => 'Меньше затраты на удары и копание: −' + formatPercent(player.energySaving), format: formatPercent,
-        apply: v => player.energySaving = v
       },
       teleportCooldown: {
         title: 'Перезарядка телепорта', steps: [[200, 30], [800, 25], [3500, 20], [10000, 15]],
@@ -500,7 +508,7 @@
     };
     // Какие улучшения показывать на вкладках магазина
     const SHOP_TABS = {
-      'Персонаж': ['energy', 'energyRegen', 'maxHp', 'hpRegen', 'maxOxygen', 'oxygenRegen', 'oxygenFreeDepth', 'moveSpeed', 'jumpPower', 'armor', 'luck', 'energySaving', 'teleportCooldown'],
+      'Персонаж': ['energy', 'energyRegen', 'energySaving', 'maxHp', 'hpRegen', 'armor', 'maxOxygen', 'oxygenRegen', 'oxygenFreeDepth', 'moveSpeed', 'jumpPower', 'luck', 'teleportCooldown'],
       'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret']
     };
     const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База', 'Расходники'];
@@ -684,7 +692,7 @@
         armor: 0,             // доля снижения урона
         luck: 0,              // бонус очков с блоков
         energySaving: 0,      // доля экономии энергии
-        teleportCooldownSec: 25, teleportTimer: 0,
+        teleportCooldownSec: 35, teleportTimer: 0,
         weaponIndex: 0, toolIndex: 0,
         attackTimer: 0, digTimer: 0, swingAnimTimer: 0
       };
@@ -744,6 +752,27 @@
         if (isFloorTile && distanceToPlayer > CAVE_RESPAWN_MIN_DISTANCE) { enemies.push(createCaveSlimeAt(col, row)); return; }
       }
     }
+
+    const teleportButton = document.getElementById('teleportButton');
+    const teleportLabel = document.getElementById('teleportLabel');
+    const TELEPORT_ICON_HTML = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 12 12 4l9 8h-3v8h-4v-5h-4v5H6v-8z" fill="#e8e8ee"/></svg>';
+    let lastTeleportLabel = '';
+
+    // Кольцо показывает, какая часть перезарядки прошла; в центре секунды до готовности
+    function updateTeleportButton() {
+      const remaining = Math.max(0, player.teleportTimer);
+      const readyFraction = remaining > 0 ? Math.max(0, Math.min(1, 1 - remaining / player.teleportCooldownSec)) : 1;
+      teleportButton.style.setProperty('--ready', readyFraction);
+      const label = remaining > 0 ? String(Math.ceil(remaining)) : 'ready';
+      if (label !== lastTeleportLabel) {                                  // содержимое меняем только когда оно изменилось
+        teleportLabel.innerHTML = remaining > 0 ? Math.ceil(remaining) : TELEPORT_ICON_HTML;
+        lastTeleportLabel = label;
+      }
+    }
+
+    teleportButton.onmousedown = event => event.preventDefault();          // кнопка не получает фокус, иначе пробел (прыжок) нажимал бы её
+    teleportButton.onclick = () => { if (!isShopOpen && !isGameOver) teleportToBase(); };
+
 
     function startNewGame() {
       createBlockTextures();
@@ -1430,6 +1459,7 @@
       updateFps(realDelta);
       if (!isGameOver && !isChartOpen && !isShopOpen) updateGame(dt);
       render();
+      updateTeleportButton();
       hudTimer -= dt;
       if (hudTimer <= 0) {updateHud(); hudTimer = 0.15;}
       requestAnimationFrame(gameLoop);
