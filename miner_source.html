@@ -223,6 +223,7 @@
     const CAVE_SLIME_CHASE_DISTANCE = 110;
     const CAVE_RESPAWN_INTERVAL_SEC = 20;   // раз в сколько секунд появляется новый слизень
     const CAVE_RESPAWN_MIN_DISTANCE = 12;   // не ближе скольких блоков к игроку
+    const CAVE_CHESTS_LIMIT = 4;            // максимум сундуков в пещерах
 
     // --- Волны ---
     const FIRST_WAVE_DELAY_SEC = 180;     // первая волна через 3 минуты
@@ -394,6 +395,13 @@
         slimes: [[BLUE_SLIME, 30], [YELLOW_SLIME, 70]] 
       },
     ];
+
+    const CAVE_CHEST_LAYERS = [
+      {maxDepth: 30, spawnChance: 0, chest: {points: 0, hp: 10, maxHp: 10}},
+      {maxDepth: 60, spawnChance: 0.015, chest: {points: 1000, hp: 10, maxHp: 10}},
+      {maxDepth: 120, spawnChance: 0.025, chest: {points: 1000, hp: 10, maxHp: 10}},
+      {maxDepth: Infinity, spawnChance: 0.060, chest: {points: 1000, hp: 10, maxHp: 10}}
+    ]
     
     const SLIME_JUMP_POWER = 300;      // сила прыжка слизня (высота ~50 пикселей, чуть выше 2 блоков)
     const SLIME_MAX_STEP_BLOCKS = 2;
@@ -534,7 +542,9 @@
 
     let player;                 // объект игрока (создаётся в createPlayer)
     let enemies = [];           // все враги: и волны, и пещерные слизни
+    let chests = [];            // Сундуки
     let floatingTexts = [];     // всплывающие числа (+очки, -урон)
+    let floorTiles = [];        // пустые ячейки
     let turretBeams = [];       // вспышки выстрелов орудия базы
     let dynamites = [];         // поставленный динамит: { col, row, timer }
     let explosions = [];        // вспышки взрывов для отрисовки
@@ -714,6 +724,14 @@
       return entries.at(-1)[0];   // на случай ошибок округления
     }
 
+     // ищем все клетки пола в пещерах, перемешиваем
+    function generateFloorTiles() {
+      for (let col = 0; col < WORLD_WIDTH; col++)
+        for (let row = SURFACE_ROW + 5; row < WORLD_HEIGHT - 1; row++)
+          if (!blocks[row][col] && blocks[row + 1][col]) floorTiles.push({ col, row });
+      floorTiles.sort(() => Math.random() - 0.5);
+    }
+
     // Создаёт слизня на полу клетки (col, row) по параметрам слоя, в котором находится клетка
     function createCaveSlimeAt(col, row) {
       const layer = findLayerByDepth(CAVE_SLIME_LAYERS, row - SURFACE_ROW);
@@ -724,19 +742,48 @@
       return slime;
     }
 
-   // Начальная расстановка: ищем все клетки пола в пещерах, перемешиваем и расставляем по шансу слоя
     function spawnCaveSlimes() {
-      const floorTiles = [];
-      for (let col = 0; col < WORLD_WIDTH; col++)
-        for (let row = SURFACE_ROW + 5; row < WORLD_HEIGHT - 1; row++)
-          if (!blocks[row][col] && blocks[row + 1][col]) floorTiles.push({ col, row });
-      floorTiles.sort(() => Math.random() - 0.5);
+      spawnCaveTargets({
+        limit:   CAVE_SLIME_LIMIT,
+        layers:  CAVE_SLIME_LAYERS,
+        createAt:  createCaveSlimeAt,
+        target:  enemies,
+      });
+    }
+
+
+    function createChest(chest, x, y) {
+      return { x, y, points: chest.points, isEnemy: false, hp: chest.hp, maxHp: chest.hp };
+    }
+
+    // Создаёт сундук на полу клетки (col, row) по параметрам слоя, в котором находится клетка
+    function createCaveChestAt(col, row) {
+      const layer = findLayerByDepth(CAVE_CHEST_LAYERS, row - SURFACE_ROW);
+      const chest = createChest(layer.chest, col * TILE_SIZE + TILE_SIZE / 2, (row + 1) * TILE_SIZE);
+      chest.points =  Math.round(chest.points + (row * 50));
+      return chest;
+    }
+
+    function spawnCaveChests() {
+      spawnCaveTargets({
+        limit:   CAVE_CHESTS_LIMIT,
+        layers:  CAVE_CHEST_LAYERS,
+        createAt:  createCaveChestAt,
+        target:  chests,
+      });
+    }
+
+    // расставляем таргеты по шансу слоя
+    function spawnCaveTargets({ limit, layers, createAt, target }) {
       let count = 0;
       for (const tile of floorTiles) {
-        if (count >= CAVE_SLIME_LIMIT) break;
-        const layer = findLayerByDepth(CAVE_SLIME_LAYERS, tile.row - SURFACE_ROW);
-        if (Math.random() < layer.spawnChance) { enemies.push(createCaveSlimeAt(tile.col, tile.row)); count++; }
-      }      
+        if (count >= limit) break;
+        const layer = findLayerByDepth(layers, tile.row - SURFACE_ROW);
+        if (Math.random() < layer.spawnChance) {
+          target.push(createAt(tile.col, tile.row));
+          count++;
+        }
+      }
     }
 
     function updateCaveRespawn(dt) {
@@ -778,7 +825,7 @@
       createBlockTextures();
       generateWorld();
       createPlayer();
-      points = 0;
+      points = 999999;
       upgradeLevels = {};
       baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0};
       dynamites = []; explosions = [];
@@ -787,7 +834,9 @@
       turretTimer = 0; isGameOver = false; messageText = ''; messageTimer = 0;
       isShopOpen = false; shopElement.className = 'h';
       caveRespawnTimer = CAVE_RESPAWN_INTERVAL_SEC;
+      generateFloorTiles();
       spawnCaveSlimes();
+      spawnCaveChests();
       resetIncomeStats();
       revealAroundPlayer();
     }
@@ -971,15 +1020,31 @@
       addFloatingText(playerCenterX(), player.y - 6, '-' + (+finalDamage.toFixed(1)), '#ff5555');
     }
 
-    function damageEnemy(enemy, amount) {
-      enemy.hp -= amount;
-      enemy.hurtTimer = 0.12;
-      addFloatingText(enemy.x, enemy.y - 22, '-' + amount, '#fff');
-      if (enemy.hp <= 0) {
-        earnPoints(enemy.points);
-        addFloatingText(enemy.x, enemy.y - 32, '+' + enemy.points, '#f5c542');
-        enemies.splice(enemies.indexOf(enemy), 1);
+    function damageTarget(target, amount) {
+      target.hp -= amount;
+      if (target.isEnemy) target.hurtTimer = 0.12;
+      addFloatingText(target.x, target.y - 22, '-' + amount, '#fff');
+  
+      if (target.hp <= 0) {
+        earnPoints(target.points);
+        addFloatingText(target.x, target.y - 32, '+' + target.points, '#f5c542');
+        const targets = target.isEnemy ? enemies : chests;
+        targets.splice(targets.indexOf(target), 1);
       }
+    }
+
+    function findClosestTarget(list, cx, cy, weapon) {
+      let best = null, bestDist = Infinity;
+      for (const obj of list) {
+        const distance = Math.hypot(obj.x - cx, (obj.y - 5) - cy);
+        const inRange = distance <= weapon.radiusTiles * TILE_SIZE;
+        const onCursorSide = Math.sign(obj.x - cx) === Math.sign(mouse.x - cx) || Math.abs(obj.x - cx) < 8;
+        if (inRange && onCursorSide && distance < bestDist) {
+          best = obj;
+          bestDist = distance;
+        }
+      }
+      return { target: best, distance: bestDist };
     }
 
     // ЛКМ: удар по ближайшему врагу в сторону курсора (энергия тратится только при попадании)
@@ -988,20 +1053,18 @@
       const weapon = WEAPONS[player.weaponIndex];
       const energyCost = weapon.energyCost * (1 - player.energySaving);
       const cx = playerCenterX(), cy = playerCenterY();
-      let target = null, targetDistance = Infinity;
-      for (const enemy of enemies) {
-        const distance = Math.hypot(enemy.x - cx, (enemy.y - 5) - cy);
-        const inRange = distance <= weapon.radiusTiles * TILE_SIZE;
-        const onCursorSide = Math.sign(enemy.x - cx) === Math.sign(mouse.x - cx) || Math.abs(enemy.x - cx) < 8;
-        if (inRange && onCursorSide && distance < targetDistance) {target = enemy; targetDistance = distance;}
-      }
-      if (!target) return;
+      const enemyHit = findClosestTarget(enemies, cx, cy, weapon);
+      const chestHit = findClosestTarget(chests,  cx, cy, weapon);
+      let target;
+      const hit = enemyHit.distance <= chestHit.distance ? enemyHit : chestHit;
+      if (!hit.target) return;
+
       if (player.energy < energyCost) {addFloatingText(playerCenterX(), player.y - 6, 'Нет энергии для удара', '#ffe706'); player.attackTimer = 0.3; return;}
       player.energy -= energyCost;
       player.attackTimer = weapon.cooldown;
       player.swingAnimTimer = 0.15;
-      player.facing = target.x >= cx ? 1 : -1; // поварачивается в сторону врага перед ударом
-      damageEnemy(target, weapon.damage);
+      player.facing = hit.target.x >= cx ? 1 : -1; // поварачивается в сторону врага перед ударом
+      damageTarget(hit.target, weapon.damage);
     }
 
     // ПКМ: удар инструментом по блоку под курсором
@@ -1064,7 +1127,7 @@
       const type = SLIME_TYPES[slimeTypeIndex];
       const hp = Math.round(type.hp * hpMultiplier);
       return {
-        x, y, isCaveSlime, hp, maxHp: hp, damage: type.damage, shadeColor: type.shadeColor, color: type.color,  speed: type.speed,
+        x, y, isCaveSlime, isEnemy: true, hp, maxHp: hp, damage: type.damage, shadeColor: type.shadeColor, color: type.color,  speed: type.speed,
         points: type.points, attackTimer: 0, hurtTimer: 0, velocityY: 0, direction: Math.random() < 0.5 ? 1 : -1
       };
     }

@@ -148,6 +148,46 @@ function drawEnemies() {
     }
 }
 
+function drawChests() {
+  const lidColor   = '#8a5a2a';   // крышка — светлое дерево
+  const bodyColor  = '#6a3f18';   // корпус — тёмное дерево
+  const metalColor = '#c9a227';   // металлические полосы и замок
+  const outline    = '#3a2410';   // обводка (опционально)
+
+  for (const chest of chests) {
+    if (chest && !devModeEnabled) {                                   // сундуки в тумане не видно
+        const row = Math.floor((chest.y - 5) / TILE_SIZE)
+        const col = Math.floor(chest.x / TILE_SIZE);
+        if (!explored[row] || !explored[row][col]) continue;
+    }
+
+    const y = chest.y - 6
+    // === крышка (верхняя часть, чуть шире) ===
+    ctx.fillStyle = lidColor;
+    ctx.fillRect(chest.x - 9, y - 8, 18, 5);
+     // === корпус (нижняя часть) ===
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(chest.x - 8, y - 3, 16, 9);
+
+    // === металлические полосы по вертикали ===
+    ctx.fillStyle = metalColor;
+    ctx.fillRect(chest.x - 6, y - 8, 2, 14);   // левая
+    ctx.fillRect(chest.x + 4, y - 8, 2, 14);   // правая
+
+    // === замок по центру ===
+    ctx.fillStyle = metalColor;
+    ctx.fillRect(chest.x - 2, y - 4, 4, 4);
+    ctx.fillStyle = outline;
+    ctx.fillRect(chest.x - 1, y - 3, 2, 2);    // замочная скважина
+
+    // === тень под сундуком (опционально) ===
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.fillRect(chest.x - 9, y + 6, 18, 3);
+
+     drawBar(chest.x - 8, chest.y - 20, 16, 3, chest.hp / chest.maxHp, '#e53935');      
+  }
+}
+
 function drawTurretBeams() {
     ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 2;
     for (const beam of turretBeams) {ctx.beginPath(); ctx.moveTo(beam.x1, beam.y1); ctx.lineTo(beam.x2, beam.y2); ctx.stroke();}
@@ -340,6 +380,7 @@ function render() {
     drawDynamites();
     drawBase();
     drawEnemies();
+    drawChests();
     drawTurretBeams();
     drawPlayer();
     drawExplosions();
