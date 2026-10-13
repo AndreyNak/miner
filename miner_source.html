@@ -171,9 +171,13 @@
     <canvas id="incomeChart" style="display:block;width:100%;height:100%"></canvas>
   </div>
   <div id="help">A/D — ходить · W/Пробел — прыжок · ПКМ — копать · ЛКМ — бить оружием · F — телепорт на базу · B —
-    магазин (на базе) · G - график · <button id="callw">Позвать волну сейчас</button></div>
+    магазин (на базе) · G - график · 
+    <button id="callw">Позвать волну сейчас</button>
+    <button id="toggle_music" title="Музыка">🎵</button>
+  </div>
   <script src="chart.js"></script>
   <script src="draw.js"></script>
+  <script src="sounds.js"></script>
   <script>
     /* ======================================================================
        MINER — оглавление
@@ -825,7 +829,7 @@
       createBlockTextures();
       generateWorld();
       createPlayer();
-      points = 999999;
+      points = 0;
       upgradeLevels = {};
       baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0};
       dynamites = []; explosions = [];
@@ -958,9 +962,9 @@
 
       // Существа: урон в центре 100%, на краю радиуса 50%
       const damageAt = distance => Math.max(1, Math.round(stats.damage * (1 - 0.5 * distance / radiusPx)));
-      for (const enemy of [...enemies]) {                                                  // копия списка: damageEnemy удаляет убитых
+      for (const enemy of [...enemies]) {                                                  // копия списка: damageTarget удаляет убитых
         const distance = Math.hypot(enemy.x - centerX, (enemy.y - 5) - centerY);
-        if (distance <= radiusPx) damageEnemy(enemy, damageAt(distance));
+        if (distance <= radiusPx) damageTarget(enemy, damageAt(distance));
       }
       const playerDistance = Math.hypot(playerCenterX() - centerX, playerCenterY() - centerY);
       if (playerDistance <= radiusPx) damagePlayer(damageAt(playerDistance));              // броня игрока снижает урон
@@ -1017,6 +1021,7 @@
     function damagePlayer(amount) {
       const finalDamage = amount * (1 - player.armor);
       player.hp -= finalDamage;
+      playTargetHit();
       addFloatingText(playerCenterX(), player.y - 6, '-' + (+finalDamage.toFixed(1)), '#ff5555');
     }
 
@@ -1065,6 +1070,7 @@
       player.swingAnimTimer = 0.15;
       player.facing = hit.target.x >= cx ? 1 : -1; // поварачивается в сторону врага перед ударом
       damageTarget(hit.target, weapon.damage);
+      playTargetHit();
     }
 
     // ПКМ: удар инструментом по блоку под курсором
@@ -1086,6 +1092,7 @@
       if (blockDurability[row][col] <= 0) {
         const reward = Math.max(1, Math.round(blockType.points * (1 + player.luck)));
         earnPoints(reward);
+        playBlockBreak();
         addFloatingText(col * TILE_SIZE + TILE_SIZE / 2, row * TILE_SIZE, '+' + reward, '#f5c542');
         blocks[row][col] = 0;
       }
@@ -1260,7 +1267,7 @@
           const level = TURRET_LEVELS[baseState.turretLevel];
           turretTimer = level.cooldown;
           turretBeams.push({x1: BASE_CENTER_X, y1: BASE_TOP - 30, x2: target.x, y2: target.y - 6, timer: 0.12});
-          damageEnemy(target, level.damage);
+          damageTarget(target, level.damage);
         }
       }
       for (let i = turretBeams.length - 1; i >= 0; i--) {
@@ -1505,6 +1512,8 @@
       player.selectedSlot = (player.selectedSlot + Math.sign(event.deltaY) + SLOT_COUNT) % SLOT_COUNT;
     }, { passive: false });
 
+  
+    document.getElementById('toggle_music').onclick = () => {  bgMusic.paused ? bgMusic.play() : bgMusic.pause(); }; // Тумблер выключения музыки
     document.getElementById('callw').onclick = () => {if (!waveActive && !isGameOver) waveTimer = 0;};   // позвать волну без ожидания
     document.getElementById('okc').onclick = () => {                                                          // инструмент разработчика
       if (devCodeInput.value.trim() === DEV_CODE) {
@@ -1528,6 +1537,15 @@
       requestAnimationFrame(gameLoop);
     }
 
+    // --- Музыка ---
+
+    window.addEventListener('keydown', startMusicOnce);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) bgMusic.volume = 0;
+      else bgMusic.volume = 0.1;
+    });
+  
     startNewGame();
     requestAnimationFrame(gameLoop);
   </script>
