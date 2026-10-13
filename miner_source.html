@@ -50,6 +50,11 @@
       max-width: 960px
     }
 
+
+    #c {
+      display: block;
+    }
+
     canvas {
       width: 100%;
       image-rendering: pixelated;
@@ -152,6 +157,45 @@
       opacity: .8;
       font-size: 12px
     }
+
+    #toast-container {
+      position: absolute;
+      top: 150px;
+      right: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      z-index: 7;          /* ниже #dev (у него z-index: 6) и #modal */
+      pointer-events: none;
+      overflow: hidden;    /* обрезает выезжающий тост, скроллбаров не будет */
+    }
+
+    .toast {
+      transform: translateX(120%);
+      opacity: 0;
+      max-width: 320px;
+      margin-right: 20px;
+      padding: 8px 10px;
+      background: rgba(30, 30, 50, 0.95);
+      color: var(--tx, #fff);
+      font: 12px monospace;
+      line-height: 1.4;
+      border-left: 4px solid #4ade80;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.4s ease;
+      pointer-events: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .toast.show { transform: translateX(0); opacity: 1; }
+    .toast.hide { transform: translateX(120%); opacity: 0; }
+    
+    .toast.info    { border-left-color: #60a5fa; }
   </style>
 </head>
 
@@ -159,6 +203,7 @@
   <div id="hud"></div>
   <div id="wrap">
     <canvas id="c" width="960" height="540"></canvas>
+    <div id="toast-container"></div>
     <div id="dev">
         <span id="devs"></span>
         <input id="code" placeholder="код разраб." autocomplete="off">
@@ -523,8 +568,47 @@
       'Персонаж': ['energy', 'energyRegen', 'energySaving', 'maxHp', 'hpRegen', 'armor', 'maxOxygen', 'oxygenRegen', 'oxygenFreeDepth', 'moveSpeed', 'jumpPower', 'luck', 'teleportCooldown'],
       'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret']
     };
+
+    const SHOP_REVEAL_RULES = [
+      ['Персонаж', 'energySaving',     () => player.energy >= 100],
+      ['Персонаж', 'maxHp',            () => player.hp < player.max],
+      ['Персонаж', 'hpRegen',          () => player.hp < Math.round(player.max * 0.5)],
+      ['Персонаж', 'armor',            () => waveNumber === 3],
+      ['Персонаж', 'maxOxygen',        () => getDepthPlayer() > 10],
+      ['Персонаж', 'oxygenRegen',      () => getDepthPlayer() > 15],
+      ['Персонаж', 'oxygenFreeDepth',  () => getDepthPlayer() > 30],
+      ['Персонаж', 'moveSpeed',        () => waveNumber === 1],
+      ['Персонаж', 'jumpPower',        () => player.moveSpeed >= 110],
+      ['Персонаж', 'luck',             () => hasTool(1)],
+      ['Персонаж', 'teleportCooldown', () => countStack('ladder') >= 10],
+      ['База',     'baseMaxHp',        () => baseState.hp <= Math.round(baseState.maxHp * 0.8)],
+      ['База',     'baseRepair',       () => waveNumber === 5],
+      ['База',     'baseMining',       () => hasTool(2)],
+      ['База',     'turret',           () => waveNumber === 4],
+    ];
     const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База', 'Расходники'];
     const DEV_CODE = '1337';
+
+    function hasTool(minIndex) {
+      return player.inventory.some(i => i !== null && i.kind === 'tool' && i.index >= minIndex);
+    }
+
+    function managerDisplayShopItems() {
+      for (const [category, key, condition] of SHOP_REVEAL_RULES) {
+        if (visibleShopItems[category].includes(key)) continue;
+        if (!condition()) continue;
+        visibleShopItems[category].push(key);
+        showToast(UPGRADES[key].title, { type: 'info' });
+      }
+
+      for (const category in visibleShopItems) {
+        const order = SHOP_TABS[category];
+        if (!order) continue;
+        visibleShopItems[category].sort(
+          (a, b) => order.indexOf(a) - order.indexOf(b)
+        );
+      }
+    }
 
     /* ======================== 2. СОСТОЯНИЕ ИГРЫ ======================== */
 
@@ -552,6 +636,8 @@
     let turretBeams = [];       // вспышки выстрелов орудия базы
     let dynamites = [];         // поставленный динамит: { col, row, timer }
     let explosions = [];        // вспышки взрывов для отрисовки
+    let visibleShopItems = [];  // Отображает доступные по прогрессу улучшения в магазине
+    let tempVisibleShopItems = []; // Временное хранилище, доступных улучшений
 
     let points = 0;             // очки игрока
     let baseState;              // состояние базы (HP, регенерация, орудие)
@@ -578,6 +664,7 @@
   
     function showMessage(text) {messageText = text; messageTimer = 2.5;}
     function addFloatingText(x, y, text, color) {floatingTexts.push({x, y, text, color, timer: 1});}
+    function getDepthPlayer() { return Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE)) }
 
     function updateFps(realDeltaSec) {
       fpsFrameCount++;
@@ -834,6 +921,10 @@
       baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0};
       dynamites = []; explosions = [];
       enemies = []; floatingTexts = []; turretBeams = [];
+      visibleShopItems = {
+        'Персонаж': ['energy', 'energyRegen'],
+        'База': ['baseEnergyRegen', 'baseHealRate']
+      }
       waveNumber = 0; waveActive = false; waveTimer = FIRST_WAVE_DELAY_SEC; spawnQueue = []; spawnTimer = 0;
       turretTimer = 0; isGameOver = false; messageText = ''; messageTimer = 0;
       isShopOpen = false; shopElement.className = 'h';
@@ -1285,7 +1376,7 @@
 
     function updateOxygen(dt) {
       const NoOxygenMultiplyDamage = 5
-      const depth = Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE));
+      const depth = getDepthPlayer();
       const layer = BLOCK_LAYERS.find(layer => depth < layer.maxDepth);
       if (depth <= player.oxygenFreeDepth) {
         player.oxygen = Math.min(player.maxOxygen, player.oxygen) + (player.oxygenRegen * dt); return  
@@ -1348,6 +1439,7 @@
     function updateGame(dt) {
       player.attackTimer -= dt; player.digTimer -= dt; player.teleportTimer -= dt; player.swingAnimTimer -= dt;
       messageTimer -= dt;
+      managerDisplayShopItems();
       updateClouds(dt);
       updatePlayerMovement(dt);
       cameraY = Math.max(0, Math.min(WORLD_HEIGHT * TILE_SIZE - CANVAS_HEIGHT, playerCenterY() - CANVAS_HEIGHT / 2));
@@ -1367,6 +1459,36 @@
     }
 
     /* ======================= 9. МАГАЗИН И ИНТЕРФЕЙС ======================= */
+  
+    function showToast(message, { duration = 5000, type = 'info' } = {}) {
+      const container = document.getElementById('toast-container');
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = "Новое улучшение: " + message;
+
+      container.appendChild(toast);
+
+      // Небольшая задержка, чтобы браузер успел применить начальные стили
+      // и анимация выезда сработала корректно
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          toast.classList.add('show');
+        });
+      });
+
+      // Скрытие
+      setTimeout(() => {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+
+        // Удаляем из DOM после завершения анимации
+        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+      }, duration);
+    }
+
+
+
 
     // Одна строка улучшения-лестницы: следующая ступень или «максимум»
     function buildUpgradeItem(upgradeKey) {
@@ -1413,7 +1535,7 @@
         'Урон ' + w.damage + ' · 1 удар/' + w.cooldown + 'с · энергия ' + w.energyCost + ' · радиус ' + w.radiusTiles + ' бл.', w.cost));
       if (shopTab === 'Инструменты') return TOOLS.map((t, i) => buildInventoryShopItem('tool', i, t.name,
         'Уровень ' + t.level + ' · копание ' + t.power + ' ед. · энергия ' + t.energyCost + ' · радиус ' + t.radiusTiles + ' бл.', t.cost));
-      const items = SHOP_TABS[shopTab].map(buildUpgradeItem);
+      const items = visibleShopItems[shopTab].map(buildUpgradeItem);
       if (shopTab === 'База') {
         const repairItem = baseState.hp < baseState.maxHp
           ? {title: 'Починить базу', description: 'Полностью восстановить HP (' + Math.ceil(baseState.hp) + '/' + baseState.maxHp + ')', cost: Math.ceil((baseState.maxHp - baseState.hp) * waveNumber), state: 'buy', onBuy: () => {baseState.hp = baseState.maxHp;}}
@@ -1518,6 +1640,12 @@
     document.getElementById('okc').onclick = () => {                                                          // инструмент разработчика
       if (devCodeInput.value.trim() === DEV_CODE) {
         devModeEnabled = !devModeEnabled;
+        if (devModeEnabled) {
+          tempVisibleShopItems = visibleShopItems
+          visibleShopItems = SHOP_TABS
+        } else {
+          visibleShopItems = tempVisibleShopItems
+        }
         showMessage(devModeEnabled ? 'Режим разработчика: покупки бесплатны' : 'Режим разработчика выключен');
       } else showMessage('Неверный код');
       devCodeInput.value = ''; devCodeInput.blur();

@@ -333,7 +333,7 @@ function drawFloatingTexts() {
 // Элементы поверх экрана (не сдвигаются камерой)
 function drawScreenOverlay() {
     drawInventoryBar();
-    const depth = Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE));
+    const depth = getDepthPlayer();
     ctx.textAlign = 'left'; ctx.font = '12px monospace';
     ctx.fillStyle = '#000a'; ctx.fillRect(6, 6, 110, 20);
     ctx.fillStyle = '#fff'; ctx.fillText('Глубина: ' + depth + ' бл.', 12, 20);
