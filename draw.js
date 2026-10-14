@@ -131,20 +131,66 @@ function drawBase() {
     }
 }
 
+function drawBossSlime(boss) {
+  const bodyColor = boss.hurtTimer > 0 ? '#fff' : boss.color;
+
+  // Тень под телом
+  ctx.fillStyle = boss.shadeColor;
+  ctx.fillRect(boss.x - 40, boss.y - 40, 80, 40);
+
+  // Верхняя «шапка» слайма (горка)
+  ctx.fillStyle = bodyColor;
+  ctx.fillRect(boss.x - 30, boss.y - 60, 60, 20);
+  ctx.fillRect(boss.x - 40, boss.y - 40, 80, 30);
+
+  // Блики на теле
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(boss.x - 28, boss.y - 55, 15, 12);
+  ctx.fillRect(boss.x - 20, boss.y - 42, 8, 6);
+
+  // Глаза (белки)
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(boss.x - 20, boss.y - 45, 15, 15);
+  ctx.fillRect(boss.x + 5,  boss.y - 45, 15, 15);
+
+  // Зрачки
+  ctx.fillStyle = '#000';
+  ctx.fillRect(boss.x - 15, boss.y - 40, 5, 5);
+  ctx.fillRect(boss.x + 10, boss.y - 40, 5, 5);
+
+  // Рот (широкая ухмылка)
+  ctx.fillStyle = '#000';
+  ctx.fillRect(boss.x - 12, boss.y - 25, 24, 4);
+  ctx.fillRect(boss.x - 16, boss.y - 28, 4, 3);
+  ctx.fillRect(boss.x + 12, boss.y - 28, 4, 3);
+
+  // Зубы (пара квадратиков)
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(boss.x - 6, boss.y - 25, 4, 4);
+  ctx.fillRect(boss.x + 2, boss.y - 25, 4, 4);
+  drawBar(boss.x - 40, boss.y - 80, 80, 8, boss.hp / boss.maxHp, '#e53935');
+
+}
+
 function drawEnemies() {
     for (const enemy of enemies) {
-    if (enemy.isCaveSlime && !devModeEnabled) {                                   // пещерных слизней в тумане не видно
-        const row = Math.floor((enemy.y - 5) / TILE_SIZE), col = Math.floor(enemy.x / TILE_SIZE);
-        if (!explored[row] || !explored[row][col]) continue;
-    }
+      if (enemy.isCaveSlime && !devModeEnabled) {                                   // пещерных слизней в тумане не видно
+          const row = Math.floor((enemy.y - 5) / TILE_SIZE), col = Math.floor(enemy.x / TILE_SIZE);
+          if (!explored[row] || !explored[row][col]) continue;
+      }
 
-    const bodyColor = enemy.hurtTimer > 0 ? '#fff' : enemy.color;
+      if (enemy.isBoss) {
+        drawBossSlime(enemy);
+        continue;
+      }
 
-    ctx.fillStyle = enemy.shadeColor; ctx.fillRect(enemy.x - 8, enemy.y - 8, 16, 8);
-    ctx.fillStyle = bodyColor; ctx.fillRect(enemy.x - 6, enemy.y - 12, 12, 4); ctx.fillRect(enemy.x - 8, enemy.y - 8, 16, 6);
-    ctx.fillStyle = '#fff'; ctx.fillRect(enemy.x - 4, enemy.y - 9, 3, 3); ctx.fillRect(enemy.x + 1, enemy.y - 9, 3, 3);
-    ctx.fillStyle = '#000'; ctx.fillRect(enemy.x - 3, enemy.y - 8, 1, 1); ctx.fillRect(enemy.x + 2, enemy.y - 8, 1, 1);
-    drawBar(enemy.x - 8, enemy.y - 20, 16, 3, enemy.hp / enemy.maxHp, '#e53935');          // красный хелс-бар над врагом
+      const bodyColor = enemy.hurtTimer > 0 ? '#fff' : enemy.color;
+
+      ctx.fillStyle = enemy.shadeColor; ctx.fillRect(enemy.x - 8, enemy.y - 8, 16, 8);
+      ctx.fillStyle = bodyColor; ctx.fillRect(enemy.x - 6, enemy.y - 12, 12, 4); ctx.fillRect(enemy.x - 8, enemy.y - 8, 16, 6);
+      ctx.fillStyle = '#fff'; ctx.fillRect(enemy.x - 4, enemy.y - 9, 3, 3); ctx.fillRect(enemy.x + 1, enemy.y - 9, 3, 3);
+      ctx.fillStyle = '#000'; ctx.fillRect(enemy.x - 3, enemy.y - 8, 1, 1); ctx.fillRect(enemy.x + 2, enemy.y - 8, 1, 1);
+      drawBar(enemy.x - 8, enemy.y - 20, 16, 3, enemy.hp / enemy.maxHp, '#e53935');          // красный хелс-бар над врагом
     }
 }
 
@@ -224,6 +270,22 @@ function drawItemIcon(item, x, y) {
     ctx.fillStyle = '#f2d9a0'; ctx.fillRect(x + 16, y + 21, 12, 4);                         // полоска
     ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 21, y + 6, 2, 6);                           // фитиль
     ctx.fillStyle = '#ffd23f'; ctx.fillRect(x + 20, y + 3, 4, 4);                           // искра
+    return;
+  }
+  if (item.kind === 'bossSlime') {
+    const cx = x + 22;  // центр ячейки по X (подставь свой размер / 2)
+    const cy = y + 30;  // центр ячейки по Y
+
+    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(cx - 4, cy - 16, 8, 3);   // пробка
+    ctx.fillStyle = '#8a6a3a'; ctx.fillRect(cx - 5, cy - 13, 10, 2);  // горлышко
+    ctx.fillStyle = '#c8e6c9'; ctx.fillRect(cx - 6, cy - 11, 12, 14); // стекло
+    ctx.fillStyle = '#4caf50'; ctx.fillRect(cx - 5, cy - 6, 10, 8);   // слизь
+    ctx.fillStyle = '#2e7d32'; ctx.fillRect(cx - 5, cy, 10, 2);       // тень слизи
+    ctx.fillStyle = '#81c784'; ctx.fillRect(cx - 4, cy - 5, 3, 3);    // блик
+    ctx.fillStyle = '#1b5e20'; ctx.fillRect(cx - 3, cy - 3, 2, 2);    // глаз 1
+    ctx.fillStyle = '#1b5e20'; ctx.fillRect(cx + 1, cy - 3, 2, 2);    // глаз 2
+    ctx.fillStyle = '#ffd23f'; ctx.fillRect(cx - 1, cy - 21, 3, 3);   // искра
+    ctx.fillStyle = '#fff59d'; ctx.fillRect(cx, cy - 20, 1, 1);       // ядро искры
     return;
   }
   if (item.kind === 'weapon') {
