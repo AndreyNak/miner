@@ -251,3 +251,160 @@ function playTargetHit() {
 
   setTimeout(() => master.disconnect(), 250);
 }
+
+let audioCtx;
+
+function playDynamiteExplosion() {
+  // Создаём аудиоконтекст при первом вызове
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+
+  const now = audioCtx.currentTime;
+
+  // 1. Низкий глухой удар
+  const boom = audioCtx.createOscillator();
+  const boomGain = audioCtx.createGain();
+
+  boom.type = "sine";
+  boom.frequency.setValueAtTime(100, now);
+  boom.frequency.exponentialRampToValueAtTime(25, now + 0.35);
+
+  boomGain.gain.setValueAtTime(0.9, now);
+  boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+  boom.connect(boomGain);
+  boomGain.connect(audioCtx.destination);
+
+  boom.start(now);
+  boom.stop(now + 0.4);
+
+  // 2. Резкий шум взрыва
+  const duration = 0.6;
+  const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+
+  // Убираем высокочастотный цифровой писк
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1800, now);
+  filter.frequency.exponentialRampToValueAtTime(150, now + duration);
+
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.8, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  noise.connect(filter);
+  filter.connect(noiseGain);
+  noiseGain.connect(audioCtx.destination);
+
+  noise.start(now);
+  noise.stop(now + duration);
+}
+
+let bowCtx;
+
+function playBowShot() {
+    if (!bowCtx) {
+        bowCtx = new (
+            window.AudioContext || window.webkitAudioContext
+        )();
+    }
+
+    const ctx = bowCtx;
+
+    if (ctx.state === "suspended") {
+        ctx.resume();
+    }
+
+    const t = ctx.currentTime;
+
+    // 1. Короткий щелчок тетивы
+    const length = Math.floor(ctx.sampleRate * 0.09);
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+
+    for (let i = 0; i < length; i++) {
+        const fade = Math.pow(1 - i / length, 5);
+        data[i] = (Math.random() * 2 - 1) * fade;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1000;
+
+    const snapGain = ctx.createGain();
+    snapGain.gain.setValueAtTime(0.65, t);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+
+    noise.connect(filter);
+    filter.connect(snapGain);
+    snapGain.connect(ctx.destination);
+
+    noise.start(t);
+
+    // 2. Низкий деревянный призвук лука
+    const wood = ctx.createOscillator();
+    const woodGain = ctx.createGain();
+
+    wood.type = "triangle";
+    wood.frequency.setValueAtTime(135, t);
+    wood.frequency.exponentialRampToValueAtTime(65, t + 0.075);
+
+    woodGain.gain.setValueAtTime(0.22, t);
+    woodGain.gain.exponentialRampToValueAtTime(0.001, t + 0.085);
+
+    wood.connect(woodGain);
+    woodGain.connect(ctx.destination);
+
+    wood.start(t);
+    wood.stop(t + 0.09);
+
+    // 3. Тихий шелест улетающей стрелы
+    const arrowLength = Math.floor(ctx.sampleRate * 0.12);
+    const arrowBuffer = ctx.createBuffer(
+        1, arrowLength, ctx.sampleRate
+    );
+
+    const arrowData = arrowBuffer.getChannelData(0);
+
+    for (let i = 0; i < arrowLength; i++) {
+        const fade = Math.pow(1 - i / arrowLength, 3);
+        arrowData[i] = (Math.random() * 2 - 1) * fade;
+    }
+
+    const arrowNoise = ctx.createBufferSource();
+    arrowNoise.buffer = arrowBuffer;
+
+    const arrowFilter = ctx.createBiquadFilter();
+    arrowFilter.type = "lowpass";
+    arrowFilter.frequency.value = 650;
+
+    const arrowGain = ctx.createGain();
+    arrowGain.gain.setValueAtTime(0.001, t);
+    arrowGain.gain.setValueAtTime(0.12, t + 0.015);
+    arrowGain.gain.exponentialRampToValueAtTime(
+        0.001, t + 0.12
+    );
+
+    arrowNoise.connect(arrowFilter);
+    arrowFilter.connect(arrowGain);
+    arrowGain.connect(ctx.destination);
+
+    arrowNoise.start(t + 0.015);
+}

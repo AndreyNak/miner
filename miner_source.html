@@ -888,6 +888,7 @@
           blockDurability[r][c] = 0;
           totalReward += BLOCK_TYPES[blockType].points * (1 + player.luck);
         }
+      playDynamiteExplosion();
       totalReward = Math.round(totalReward);
       if (totalReward > 0) { earnPoints(totalReward); addFloatingText(centerX, centerY - 10, '+' + totalReward, '#f5c542'); }
 
@@ -1016,6 +1017,7 @@
       player.swingAnimTimer = 0.15;
       player.facing = mouse.x >= playerCenterX() ? 1 : -1;
 
+      playBowShot();
       createProjectile(weapon);
     }
 
