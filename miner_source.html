@@ -5,200 +5,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Miner</title>
-  <style>
-    :root {
-      box-sizing: border-box;
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      --bg: #14161c;
-      --panel: #222733;
-      --tx: #e8e8ee;
-      --ac: #f5c542
-    }
-
-    html {
-      scroll-padding-top: env(safe-area-inset-top, 0px)
-    }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--tx);
-      font: 14px monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center
-    }
-
-    #hud {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px 14px;
-      padding: 8px;
-      max-width: 960px;
-      width: 100%;
-      box-sizing: border-box
-    }
-
-    #hud b {
-      color: var(--ac)
-    }
-
-    #wrap {
-      position: relative;
-      width: 100%;
-      max-width: 960px
-    }
-
-
-    #c {
-      display: block;
-    }
-
-    canvas {
-      width: 100%;
-      image-rendering: pixelated;
-      background: #000;
-      display: block;
-      cursor: crosshair
-    }
-
-    #dev {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      display: flex;
-      gap: 4px;
-      z-index: 6;
-      align-items: center;
-      font-size: 11px
-    }
-
-    #dev input {
-      width: 90px;
-      background: #0d0f14;
-      color: var(--tx);
-      border: 2px solid #444c60;
-      padding: 4px;
-      font: 12px monospace
-    }
-
-    #teleportButton{position:absolute;top:42px;right:6px;z-index:6;width:46px;height:46px;border:none;border-radius:50%;padding:4px;box-sizing:border-box;cursor:pointer;
-      background:conic-gradient(#7CFC8A calc(var(--ready, 1) * 360deg), #2a3040 0)}
-    #teleportButton .inner{width:100%;height:100%;border-radius:50%;background:#254255;display:flex;align-items:center;justify-content:center;color:var(--tx);font:bold 14px monospace}
-
-    #modal {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(600px, 94%);
-      max-height: 90%;
-      overflow: auto;
-      background: var(--panel);
-      border: 3px solid var(--ac);
-      padding: 10px;
-      box-sizing: border-box;
-      z-index: 5
-    }
-
-    #modal.h {
-      display: none
-    }
-
-    .tabs {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 8px;
-      flex-wrap: wrap
-    }
-
-    .tabs .on {
-      border-color: var(--ac);
-      color: var(--ac)
-    }
-
-    .it {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      border: 2px solid #444c60;
-      padding: 6px;
-      margin-bottom: 6px
-    }
-
-    .it small {
-      opacity: .75;
-      display: block
-    }
-
-    button {
-      background: #2d3446;
-      color: var(--tx);
-      border: 2px solid #444c60;
-      padding: 6px 8px;
-      font: 12px monospace;
-      cursor: pointer
-    }
-
-    button:disabled {
-      opacity: .45;
-      cursor: default
-    }
-
-    button:not(:disabled):hover {
-      border-color: var(--ac)
-    }
-
-    #help {
-      padding: 8px;
-      max-width: 960px;
-      opacity: .8;
-      font-size: 12px
-    }
-
-    #toast-container {
-      position: absolute;
-      top: 150px;
-      right: 0;
-      left: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 10px;
-      z-index: 7;          /* ниже #dev (у него z-index: 6) и #modal */
-      pointer-events: none;
-      overflow: hidden;    /* обрезает выезжающий тост, скроллбаров не будет */
-    }
-
-    .toast {
-      transform: translateX(120%);
-      opacity: 0;
-      max-width: 320px;
-      margin-right: 20px;
-      padding: 8px 10px;
-      background: rgba(30, 30, 50, 0.95);
-      color: var(--tx, #fff);
-      font: 12px monospace;
-      line-height: 1.4;
-      border-left: 4px solid #4ade80;
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-                  opacity 0.4s ease;
-      pointer-events: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .toast.show { transform: translateX(0); opacity: 1; }
-    .toast.hide { transform: translateX(120%); opacity: 0; }
-    
-    .toast.info    { border-left-color: #60a5fa; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
   <div id="hud"></div>
   <div id="wrap">
@@ -210,7 +18,9 @@
         <button id="okc">OK</button>
     </div>
     <button id="teleportButton" title="Телепорт на базу (F)"><span class="inner" id="teleportLabel"></span></button>
+    <button id="dirtButton" class="hidden" title="Земля"></button>
     <div id="modal" class="h"></div>
+    <div id="dirtModal" class="hidden"></div>
   </div>
   <div id="chartOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0d0f14">
     <canvas id="incomeChart" style="display:block;width:100%;height:100%"></canvas>
@@ -218,8 +28,11 @@
   <div id="help">A/D — ходить · W/Пробел — прыжок · ПКМ — копать · ЛКМ — бить оружием · F — телепорт на базу · B —
     магазин (на базе) · G - график · 
     <button id="callw">Позвать волну сейчас</button>
+    <button id="toggle_world">Сменить мир</button>
     <button id="toggle_music" title="Музыка">🎵</button>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/approximate-number@2.1.1/lib/approximate-number.js"></script>
+  <script src="data.js"></script>
   <script src="chart.js"></script>
   <script src="draw.js"></script>
   <script src="sounds.js"></script>
@@ -249,12 +62,20 @@
     const CANVAS_WIDTH = 960;
     const CANVAS_HEIGHT = 540;
 
-    // --- База (20% ширины мира, высота — половина ширины) ---
-    const BASE_WIDTH = WORLD_WIDTH * TILE_SIZE * 0.2;
+
+    // --- Игрок
+    const PLAYER_WIDTH = 12
+    const PLAYER_HEIGHT = 18;
+    const STAR_POSITION_PLAYER = {x: 10 * TILE_SIZE, y: GROUND_Y - PLAYER_HEIGHT}
+
+    // --- Основная база (20% ширины мира, высота — половина ширины) ---
+    const BASE_WIDTH = TILE_SIZE * 10;
     const BASE_LEFT = (WORLD_WIDTH * TILE_SIZE - BASE_WIDTH) / 2;
     const BASE_HEIGHT = BASE_WIDTH / 2;
     const BASE_TOP = GROUND_Y - BASE_HEIGHT;
     const BASE_CENTER_X = BASE_LEFT + BASE_WIDTH / 2;
+
+    // -- База экспедиции
 
     // --- Физика и общие параметры ---
     const GRAVITY = 900;
@@ -273,6 +94,8 @@
     const CAVE_RESPAWN_INTERVAL_SEC = 20;   // раз в сколько секунд появляется новый слизень
     const CAVE_RESPAWN_MIN_DISTANCE = 12;   // не ближе скольких блоков к игроку
     const CAVE_CHESTS_LIMIT = 4;            // максимум сундуков в пещерах
+    const SLIME_JUMP_POWER = 300;      // сила прыжка слизня (высота ~50 пикселей, чуть выше 2 блоков)
+    const SLIME_MAX_STEP_BLOCKS = 2;
 
     // --- Волны ---
     const FIRST_WAVE_DELAY_SEC = 180;     // первая волна через 3 минуты
@@ -304,13 +127,14 @@
     const EXPLOSION_ANIM_SEC = 0.35;         // длительность вспышки взрыва
     const DYNAMITE_ITEM = { name: 'Динамит', color: '#d33a2c' };
 
-    //  Облака
-    const clouds = [
-      { x: 80,  y: 40, speed: 3,  scale: 1.0 },
-      { x: 300, y: 70, speed: 6, scale: 0.7 },
-      { x: 700, y: 30, speed: 2,  scale: 1.3 },
-      { x: 20, y: 100, speed: 3, scale: 0.9 },
-    ];
+     // Элементы страницы
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    const hudElement = document.getElementById('hud');
+    const shopElement = document.getElementById('modal');
+    const devLabelElement = document.getElementById('devs');
+    const devCodeInput = document.getElementById('code');
 
     // Лес
     function generateForest(spacing) {
@@ -329,155 +153,19 @@
     const forestFar  = generateForest(70);
     const forestNear = generateForest(50);
 
-    // --- Блоки ---
-    const BLOCK = {DIRT: 1, CLAY: 2, GRAVEL: 3, COBBLESTONE: 4, IRON_ORE: 5, CRYSTAL: 6, VOID_ORE: 7, DARK_CRYSYAL: 8};
-    // durability — крепкость, level — нужный уровень инструмента, points — очки за добычу
-    const BLOCK_TYPES = [null,
-      {name: 'земля', durability: 5, level: 1, points: 1, colors: ['#7a4a26', '#6b3f20', '#8a5830', '#5e3519']},
-      {name: 'глина', durability: 8, level: 1, points: 3, colors: ['#8b6a4a', '#5a8f8c', '#9a7550', '#4e7f7f']},
-      {name: 'гравий', durability: 12, level: 2, points: 6, colors: ['#b8bcc2', '#a4a8ae', '#c9cdd2', '#9298a0']},
-      {name: 'булыжник', durability: 20, level: 3, points: 15, colors: ['#5a5d63', '#4a4d53', '#6a6d73', '#3c3f45']},
-      {name: 'железная руда', durability: 35, level: 4, points: 40, colors: ['#5a5d63', '#8a7a6a', '#c9803a', '#4a4d53']},
-      {name: 'кристалл', durability: 60, level: 5, points: 120, colors: ['#2a3a5a', '#4fd8e8', '#2a6a8a', '#a8f4ff']},
-      {name: 'порода бездны', durability: 999, level: 6, points: 500, colors: ['#251e2b', '#653747', '#b66a4a', '#d9b77e']},
-      {name: 'темный кристал', durability: 150, level: 5, points: 500, colors: ['#3a0566', '#4a4d53', '#6a6d73', '#5d139a']}
-    ];
-
-    // Уровни динамита: до какого уровня руды рвёт, урон в центре взрыва, цена пачки
-    const DYNAMITE_LEVELS = [
-      { maxBlockLevel: 3, damage: 50, packPrice: 800 },
-      { maxBlockLevel: 4, damage: 100, packPrice: 1500 },
-      { maxBlockLevel: 5, damage: 200, packPrice: 2000 }];
     
-    const BLOCK_LAYERS = [
-      {
-        maxDepth: 10,
-        oxygenCost: 0,
-        blocks: [
-          [BLOCK.DIRT, 75],
-          [BLOCK.CLAY, 20],
-          [BLOCK.GRAVEL, 4],
-          [BLOCK.COBBLESTONE, 1],
-        ],
-      },
-      {
-        maxDepth: 30,
-        oxygenCost: 5,
-        blocks: [
-          [BLOCK.DIRT, 25],
-          [BLOCK.CLAY, 35],
-          [BLOCK.GRAVEL, 25],
-          [BLOCK.COBBLESTONE, 15],
-        ],
-      },
-      {
-        maxDepth: 60,
-        oxygenCost: 15,
-        blocks: [
-          [BLOCK.CLAY, 5],
-          [BLOCK.GRAVEL, 45],
-          [BLOCK.COBBLESTONE, 50],
-        ],
-      },
-      {
-        maxDepth: 100,
-        oxygenCost: 40,
-        blocks: [
-          [BLOCK.GRAVEL, 5],
-          [BLOCK.COBBLESTONE, 75],
-          [BLOCK.IRON_ORE, 20],
-        ],
-      },
-      {
-        maxDepth: Infinity,
-        oxygenCost: 150,
-        blocks: [
-          [BLOCK.COBBLESTONE, 69.7],
-          [BLOCK.IRON_ORE, 25],
-          [BLOCK.CRYSTAL, 5],
-          [BLOCK.DARK_CRYSYAL, 0.3],
-        ],
-      },
-    ];
-
-    // --- Оружие (ЛКМ) ---
-    // damage — урон, cooldown — секунд между ударами, energyCost — энергия за удар, radiusTiles — радиус в блоках
-    const WEAPONS = [
-      {name: 'Палка', family: 'melee', tier: 1, damage: 2, cooldown: 1, energyCost: 5, radiusTiles: 1, cost: 0, color: '#b58a4a'},
-      {name: 'Деревянный меч', family: 'melee', tier: 2, damage: 4, cooldown: 1, energyCost: 10, radiusTiles: 2, cost: 50, color: '#d9a65a'},
-      {name: 'Каменный меч', family: 'melee', tier: 3, damage: 10, cooldown: 0.8, energyCost: 15, radiusTiles: 2, cost: 500, color: '#a9b0b8'},
-      {name: 'Железный меч', family: 'melee', tier: 4, damage: 18, cooldown: 0.7, energyCost: 23, radiusTiles: 2, cost: 3000, color: '#e0e0ea'},
-      {name: 'Кристальный меч', family: 'melee', tier: 5, damage: 35, cooldown: 0.6, energyCost: 40, radiusTiles: 2, cost: 10000, color: '#4fd8e8'}];
-
-
-    // --- Инструменты (ПКМ) ---
-    // level — какие блоки может копать, power — сколько крепкости снимает за удар
-    const TOOLS = [
-      {name: 'Деревянная лопата', family: 'shovel', tier: 1, level: 1, power: 1, energyCost: 1, radiusTiles: 1, cost: 0, color: '#d9a65a'},
-      {name: 'Каменная лопата', family: 'shovel', tier: 2, level: 1, power: 3, energyCost: 2, radiusTiles: 2, cost: 60, color: '#a9b0b8'},
-      {name: 'Деревянная кирка', family: 'pickaxe', tier: 1, level: 2, power: 5, energyCost: 3, radiusTiles: 1, cost: 450, color: '#d9a65a'},
-      {name: 'Железная лопата', family: 'shovel', tier: 3, level: 2, power: 6, energyCost: 1, radiusTiles: 3, cost: 2500, color: '#e0e0ea'},
-      {name: 'Каменная кирка', family: 'pickaxe', tier: 2, level: 3, power: 8, energyCost: 4, radiusTiles: 2, cost: 6000, color: '#a9b0b8'},
-      {name: 'Железная кирка', family: 'pickaxe', tier: 3, level: 4, power: 14, energyCost: 6, radiusTiles: 2, cost: 12000, color: '#e0e0ea'},
-      {name: 'Кристальная кирка', family: 'pickaxe', tier: 4, level: 5, power: 24, energyCost: 9, radiusTiles: 3, cost: 25000, color: '#4fd8e8'}];
-    
-  
-    // --- Орудие базы (индекс = уровень улучшения) ---
-    const TURRET_LEVELS = [null, {damage: 3, cooldown: 1.5}, {damage: 6, cooldown: 1.1}, {damage: 12, cooldown: 0.8}];
-
-    // --- Враги волн ---
-    const GREEN_SLIME = 0, BLUE_SLIME = 1, YELLOW_SLIME = 2, BOSS_SLIME = 3;
-
-    const SLIME_TYPES = [
-      {hp: 5, damage: 5, speed: 15, width: 16, height: 12, points: 5, color: '#4fc84f' , shadeColor: "#2f9a2f" },    // зелёный
-      {hp: 10, damage: 15, speed: 18, width: 16, height: 12, points: 20, color: "#3f6fe0" , shadeColor: "#2a4aa0" } , // синий
-      {hp: 30, damage: 35, speed: 20, width: 16, height: 12, points: 60, color: "#deb63e" , shadeColor: "#6f5b1e"},    // желтый
-      {hp: 1300, damage: 100, speed: 15, width: 80, height: 60, points: 25000, color: "#461b6a" , shadeColor: "#311349", kind: 'slimeBoss'}, // босс слайм
-    ]; 
-    
-    const CAVE_SLIME_LAYERS = [
-      { 
-        maxDepth: 30,
-        spawnChance: 0.02,
-        hpMultiplier: 1, damageMultiplier: 1, pointsMultiplier: 1,
-        slimes: [[GREEN_SLIME, 85], [BLUE_SLIME, 15]] 
-      },
-      { 
-        maxDepth: 100, 
-        spawnChance: 0.04,
-        hpMultiplier: 1.5, damageMultiplier: 2, pointsMultiplier: 1.5,
-        slimes: [[GREEN_SLIME, 30], [BLUE_SLIME, 55], [YELLOW_SLIME, 15]] 
-      },
-      { 
-        maxDepth: Infinity,
-        spawnChance: 0.07,
-        hpMultiplier: 2.5, damageMultiplier: 4, pointsMultiplier: 3,
-        slimes: [[BLUE_SLIME, 30], [YELLOW_SLIME, 70]] 
-      },
-    ];
-
-    const CAVE_CHEST_LAYERS = [
-      {maxDepth: 30, spawnChance: 0, chest: {points: 0, hp: 10, maxHp: 10, width: 20, height: 16}},
-      {maxDepth: 60, spawnChance: 0.015, chest: {points: 1000, hp: 10, maxHp: 10, width: 20, height: 16}},
-      {maxDepth: 120, spawnChance: 0.025, chest: {points: 1000, hp: 10, maxHp: 10, width: 20, height: 16}},
-      {maxDepth: Infinity, spawnChance: 0.060, chest: {points: 1000, hp: 10, maxHp: 10, width: 20, height: 16}}
-    ]
-    
-    const SLIME_JUMP_POWER = 300;      // сила прыжка слизня (высота ~50 пикселей, чуть выше 2 блоков)
-    const SLIME_MAX_STEP_BLOCKS = 2;
-
     // --- Улучшения магазина ---
     // steps: [цена, новое значение]. describe — текущее состояние, format — подпись следующей ступени, apply — применить.
     // Состояние (player, baseState) объявлено ниже, функции вызываются позже, поэтому порядок объявления не важен.
     const formatPercent = value => Math.round(value * 100) + '%';
     const UPGRADES = {
       energy: {
-        title: 'Энергия', steps: [[25, 50], [150, 100], [1000, 220], [8000, 480]],
+        title: 'Энергия', steps: [[25, 50], [150, 100], [1000, 220], [8000, 480], [30000, 750]],
         describe: () => 'Макс. энергия: ' + player.maxEnergy, format: v => v,
         apply: v => {player.maxEnergy = v; player.energy = v;}
       },
       energyRegen: {
-        title: 'Регенерация энергии', steps: [[25, 2], [200, 4], [1000, 9], [7500, 15]],
+        title: 'Регенерация энергии', steps: [[25, 2], [200, 4], [1000, 9], [7500, 15], [35000, 20]],
         describe: () => 'Сейчас ' + player.energyRegen + '/сек вне базы', format: v => v + '/сек',
         apply: v => player.energyRegen = v
       },
@@ -543,7 +231,7 @@
         apply: () => {} 
       },
       baseEnergyRegen: {
-        title: 'Регенерация энергии у базы', steps: [[150, 15], [800, 30], [3500, 45], [9000, 80]],
+        title: 'Регенерация энергии у базы', steps: [[150, 15], [800, 30], [3500, 45], [9000, 80], [50000, 160]],
         describe: () => 'Сейчас ' + baseState.energyRegen + '/сек', format: v => v + '/сек',
         apply: v => baseState.energyRegen = v
       },
@@ -553,12 +241,12 @@
         apply: v => baseState.playerHealRate = v
       },
       baseMaxHp: {
-        title: 'HP базы', steps: [[250, 750], [2000, 1000], [10000, 1500]],
+        title: 'HP базы', steps: [[250, 750], [2000, 1000], [10000, 1500], [50000, 2000]],
         describe: () => 'Макс. HP базы: ' + baseState.maxHp, format: v => v,
         apply: v => {baseState.hp += v - baseState.maxHp; baseState.maxHp = v;}
       },
       baseRepair: {
-        title: 'Авторемонт базы', steps: [[300, 1], [1200, 3], [4000, 8]],
+        title: 'Авторемонт базы', steps: [[300, 1], [1200, 3], [4000, 8], [15000, 16]],
         describe: () => 'Сейчас ' + baseState.repairRate + ' HP/сек', format: v => v + ' HP/сек',
         apply: v => baseState.repairRate = v
       },
@@ -568,17 +256,21 @@
         apply : v => baseState.miningRate = v
       },
       turret: {
-        title: 'Орудие базы', steps: [[500, 1], [1500, 2], [6000, 3]],
+        title: 'Орудие базы', steps: [[500, 1], [1500, 2], [6000, 3], [25000, 4]],
         describe: () => baseState.turretLevel ? 'Ур. ' + baseState.turretLevel + ': урон ' + TURRET_LEVELS[baseState.turretLevel].damage + ', 1 выстрел/' + TURRET_LEVELS[baseState.turretLevel].cooldown + 'с' : 'Не построено',
         format: v => 'ур. ' + v + ' (урон ' + TURRET_LEVELS[v].damage + ', 1/' + TURRET_LEVELS[v].cooldown + 'с)',
         apply: v => baseState.turretLevel = v
+      },
+      maxFuel: {
+        title: 'Макс. топлива', steps: [[100000, 100]],
+        describe: () => 'Сейчас ' + baseState.maxFuel, format: v => v,
+        apply: v => baseState.maxFuel = v
+      },
+      fuelRegen: {
+        title: 'Регенерация Топлива', steps: [[150000, 1], [400000, 2]],
+        describe: () => 'Сейчас ' + baseState.fuelRegen + '/сек', format: v => v + '/сек',
+        apply: v => baseState.fuelRegen = v
       }
-    };
-    // Какие улучшения показывать на вкладках магазина
-    const SHOP_TABS = {
-      'Персонаж': ['energy', 'energyRegen', 'energySaving', 'maxHp', 'hpRegen', 'armor', 'maxOxygen', 'oxygenRegen', 'oxygenFreeDepth', 'moveSpeed', 'jumpPower', 'luck', 'teleportCooldown'],
-      'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret'],
-      'Расходники': ['ladder', 'dynamite', 'dynamiteUpgrade','bossSlime']
     };
 
     const SHOP_REVEAL_RULES = [
@@ -597,13 +289,13 @@
       ['База',        'baseRepair',       () => waveNumber === 5],
       ['База',        'baseMining',       () => player.toolIndex >=2],
       ['База',        'turret',           () => waveNumber === 4],
+      ['База',        'maxFuel',          () => bossSlimeDead === true],
+      ['База',        'fuelRegen',        () => bossSlimeDead === true],
       ['Расходники', 'ladder',            () => getDepthPlayer() > 2],
       ['Расходники', 'dynamite',          () => getDepthPlayer() > 35],
       ['Расходники', 'dynamiteUpgrade',   () => getDepthPlayer() > 80],
-      ['Расходники', 'bossSlime',         () => canSummonSlimeBoss === true]
+      ['Расходники', 'bossSlime',         () => canSummonSlimeBoss === true],
     ];
-    const SHOP_TAB_NAMES = ['Персонаж', 'Оружие', 'Инструменты', 'База', 'Расходники'];
-    const DEV_CODE = '1337';
 
     function getTitleFor(category, key) {
       // Явные заголовки для расходников
@@ -614,6 +306,10 @@
           dynamiteUpgrade:  'Улучшение динамита',
       };
       return CONSUMABLE_TITLES[key] ?? UPGRADES[key]?.title ?? key;
+    }
+
+    function getShopTabs() {
+      return  isMainBase ? SHOP_TAB_NAMES : SHOP_TAB_NAMES.filter((name) => name == 'База')
     }
 
     function managerDisplayShopItems() {
@@ -637,48 +333,120 @@
 
     /* ======================== 2. СОСТОЯНИЕ ИГРЫ ======================== */
 
-    // Элементы страницы
-    const canvas = document.getElementById('c');
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    const hudElement = document.getElementById('hud');
-    const shopElement = document.getElementById('modal');
-    const devLabelElement = document.getElementById('devs');
-    const devCodeInput = document.getElementById('code');
+    function currentWorldData() {
+      return world[current_planet].biomes[current_biome];
+    }
 
-    // Мир: blocks[строка][столбец] — тип блока (0 = пусто), blockDurability — оставшаяся крепкость,
-    // explored — открыта ли клетка из тумана
-    let blocks, blockDurability, explored;
+    function getMainBase() {
+      for (const [worldName, w] of Object.entries(world)) {
+        for (const [biomeName, biome] of Object.entries(w.biomes)) {
+          if (biome.isMainBase) return { worldName, biomeName, biome };
+        }
+      }
+      throw new Error('Main base not found — проверь isMainBase');
+    }
 
-    // ladders[строка][столбец] = true, если в клетке стоит лестница
-    let ladders;
+    const WORLD_FIELDS = [
+      'blocks',           // blocks[строка][столбец] — тип блока (0 = пусто)
+      'blockDurability',  // оставшаяся крепкость
+      'floorTiles',       // пустые ячейки
+      'ladders',          // ladders[строка][столбец] = true, если стоит лестница
+      'explored',         // открыта ли клетка из тумана
+      'dynamites',        // поставленный динамит: { col, row, timer }
+      'explosions',       // вспышки взрывов отрисовки
+      'enemies',          // все враги: и волны, и пещерные слизни
+      'chests',           // сундуки
+      'turretBeams',      // вспышки выстрелов орудия базы
+      'waveNumber',
+      'waveActive',
+      'waveTimer',
+      'isMainBase',
+    ];
+
+    for (const field of WORLD_FIELDS) {
+      Object.defineProperty(globalThis, field, {
+        configurable: true, 
+        enumerable: true,
+        get() { return currentWorldData()[field]; },
+        set(v) { currentWorldData()[field] = v; },
+      });
+    }
 
     let player;                 // объект игрока (создаётся в createPlayer)
-    let enemies = [];           // все враги: и волны, и пещерные слизни
-    let chests = [];            // Сундуки
-    let floatingTexts = [];     // всплывающие числа (+очки, -урон)
-    let floorTiles = [];        // пустые ячейки
-    let turretBeams = [];       // вспышки выстрелов орудия базы
-    let dynamites = [];         // поставленный динамит: { col, row, timer }
-    let explosions = [];        // вспышки взрывов для отрисовки
+    let floatingTexts = [];     // всплывающие числа (+очки, -урон)     
     let visibleShopItems = [];  // Отображает доступные по прогрессу улучшения в магазине
     let tempVisibleShopItems = []; // Временное хранилище, доступных улучшений
+    let current_biome;
+    let current_planet;
+    let main_biome;
+    let expedition_time_left = 120;
+    let showHitboxes = false;
+
+
+    let world = {
+      earth: {
+        biomes: {
+          slime_valley: {
+            blocks: [],
+            blockDurability: [],
+            floorTiles: [],
+            explored: [],
+            enemies: [],
+            ladders: [], 
+            chests: [],
+            dynamites: [],
+            explosions: [],
+            turretBeams: [],
+            waveNumber: 0,
+            waveActive: false,
+            waveTimer: FIRST_WAVE_DELAY_SEC,
+            isMainBase: true,
+          },
+          sand_dunes: {
+            blocks: [],
+            blockDurability: [],
+            floorTiles: [],
+            explored: [],
+            enemies: [],
+            ladders: [], 
+            chests: [],
+            dynamites: [],
+            explosions: [],
+            turretBeams: [],
+            waveNumber: 0,
+            waveActive: false,
+            waveTimer: FIRST_WAVE_DELAY_SEC,
+            isMainBase: false
+          }
+        }
+      },
+      mars: {
+        biomes: {
+
+        }
+      }
+    };
+
+    const snapshotEmptyWorld = structuredClone(world);
 
     let points = 0;             // очки игрока
-    let baseState;              // состояние базы (HP, регенерация, орудие)
+    let baseState;              // состояние базы
+    let miniBaseState;          // состояние базы экспедиции
     let ownedWeapons = [], ownedTools = [];
     let upgradeLevels = {};     // сколько ступеней купили в каждом улучшении
 
-    let waveNumber = 0, waveActive = false, waveTimer = 0, spawnQueue = [], spawnTimer = 0;
-    let canSummonSlimeBoss = false, bossFightActive = false;
+    let spawnQueue = [], spawnTimer = 0;
+    let canSummonSlimeBoss = false, bossFightActive = false, bossSlimeDead = false;
     let isGameOver = false;
     let messageText = '', messageTimer = 0;
     let isShopOpen = false, shopTab = 'Персонаж';
+    let isDirtWindowOpen = false;
     let devModeEnabled = false;
     let cameraY = 0;
     let turretTimer = 0;
     let caveRespawnTimer = 0;
     let fps = 0, fpsFrameCount = 0, fpsTimer = 0;
+    let projectiles = [];
 
     const keysDown = {};
     const mouse = {x: 0, y: 0, leftDown: false, rightDown: false};
@@ -691,6 +459,15 @@
     function showMessage(text) {messageText = text; messageTimer = 2.5;}
     function addFloatingText(x, y, text, color) {floatingTexts.push({x, y, text, color, timer: 1});}
     function getDepthPlayer() { return Math.max(0, Math.floor((player.y + player.height - GROUND_Y) / TILE_SIZE)) }
+
+    function getEnemyRect(enemy) {
+      return {
+        left: enemy.x - enemy.width / 2,
+        top: enemy.y - enemy.height,
+        width: enemy.width,
+        height: enemy.height
+      };
+    }
 
     function updateFps(realDeltaSec) {
       fpsFrameCount++;
@@ -747,7 +524,8 @@
 
     // Какой блок ставить на данной глубине: чем глубже, тем ценнее. roll — случайное число 0..1.
     function chooseBlockTypeByDepth(depth, roll) {
-      return pickWeighted(findLayerByDepth(BLOCK_LAYERS, depth).blocks, roll);
+      const blocks_layers = BIOME_BLOCK_LAYERS[current_biome]
+      return pickWeighted(findLayerByDepth(blocks_layers, depth).blocks, roll);
     }
 
     // Вырезает квадрат пустоты (ширина 3 или 4 блока) — кисть для пещер
@@ -808,10 +586,10 @@
 
     function createPlayer() {
       player = {
-        x: 10 * TILE_SIZE, y: GROUND_Y - 18, width: 12, height: 18,
+        x: STAR_POSITION_PLAYER.x, y: STAR_POSITION_PLAYER.y, width: PLAYER_WIDTH, height: PLAYER_HEIGHT,
         velocityX: 0, velocityY: 0, onGround: false, facing: 1,
         hp: 100, maxHp: 100, hpRegen: 0.5,
-        inventory: [{ kind: 'weapon', index: 0 }, { kind: 'tool', index: 0 }, ...Array(SLOT_COUNT - 2).fill(null)],
+        inventory: [{ kind: 'weapon', family: 'melee', index: 0 }, { kind: 'tool', index: 0 }, ...Array(SLOT_COUNT - 2).fill(null)],
         selectedSlot: 0,
         energy: 15, maxEnergy: 15, energyRegen: 1,
         oxygen: 50, maxOxygen: 50, oxygenRegen: 25, oxygenFreeDepth: 10,
@@ -851,7 +629,7 @@
 
     // Создаёт слизня на полу клетки (col, row) по параметрам слоя, в котором находится клетка
     function createCaveSlimeAt(col, row) {
-      const layer = findLayerByDepth(CAVE_SLIME_LAYERS, row - SURFACE_ROW);
+      const layer = findLayerByDepth(BIOME_CAVE_ENEMY_LAYERS[current_biome], row - SURFACE_ROW);
       const slimeType = pickWeighted(layer.slimes, Math.random());
       const slime = createEnemy(slimeType, col * TILE_SIZE + TILE_SIZE / 2, (row + 1) * TILE_SIZE, true, layer.hpMultiplier);
       slime.damage = Math.max(1, Math.round(slime.damage * layer.damageMultiplier));
@@ -862,9 +640,9 @@
     function spawnCaveSlimes() {
       spawnCaveTargets({
         limit:   CAVE_SLIME_LIMIT,
-        layers:  CAVE_SLIME_LAYERS,
+        layers:  BIOME_CAVE_ENEMY_LAYERS[current_biome],
         createAt:  createCaveSlimeAt,
-        target:  enemies,
+        targets:  enemies,
       });
     }
 
@@ -886,18 +664,18 @@
         limit:   CAVE_CHESTS_LIMIT,
         layers:  CAVE_CHEST_LAYERS,
         createAt:  createCaveChestAt,
-        target:  chests,
+        targets:  chests,
       });
     }
 
     // расставляем таргеты по шансу слоя
-    function spawnCaveTargets({ limit, layers, createAt, target }) {
+    function spawnCaveTargets({ limit, layers, createAt, targets }) {
       let count = 0;
       for (const tile of floorTiles) {
         if (count >= limit) break;
         const layer = findLayerByDepth(layers, tile.row - SURFACE_ROW);
         if (Math.random() < layer.spawnChance) {
-          target.push(createAt(tile.col, tile.row));
+          targets.push(createAt(tile.col, tile.row));
           count++;
         }
       }
@@ -917,11 +695,6 @@
       }
     }
 
-    const teleportButton = document.getElementById('teleportButton');
-    const teleportLabel = document.getElementById('teleportLabel');
-    const TELEPORT_ICON_HTML = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 12 12 4l9 8h-3v8h-4v-5h-4v5H6v-8z" fill="#e8e8ee"/></svg>';
-    let lastTeleportLabel = '';
-
     // Кольцо показывает, какая часть перезарядки прошла; в центре секунды до готовности
     function updateTeleportButton() {
       const remaining = Math.max(0, player.teleportTimer);
@@ -934,26 +707,27 @@
       }
     }
 
-    teleportButton.onmousedown = event => event.preventDefault();          // кнопка не получает фокус, иначе пробел (прыжок) нажимал бы её
-    teleportButton.onclick = () => { if (!isShopOpen && !isGameOver) teleportToBase(); };
-
-
     function startNewGame() {
+      world = structuredClone(snapshotEmptyWorld);
+      current_planet = 'earth';
+      current_biome = 'slime_valley';
+      main_biome = 'slime_valley';
       createBlockTextures();
       generateWorld();
       createPlayer();
       points = 0;
       upgradeLevels = {};
-      baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0};
-      dynamites = []; explosions = [];
-      enemies = []; floatingTexts = []; turretBeams = [];
+      baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0, maxFuel: 50, fuelRegen: 0.5, fuel: 0};
+      miniBaseState = {hp: 500, maxHp: 500, energyRegen: 25, playerHealRate: 12}
+      explosions = [];
+      floatingTexts = []; turretBeams = [];
       canSummonSlimeBoss = false;
       visibleShopItems = {
         'Персонаж': ['energy', 'energyRegen'],
         'База': ['baseEnergyRegen', 'baseHealRate'],
         'Рассходники': [],
       }
-      waveNumber = 0; waveActive = false; bossFightActive = false; waveTimer = FIRST_WAVE_DELAY_SEC; spawnQueue = []; spawnTimer = 0;
+      bossFightActive = false; bossSlimeDead = false; spawnQueue = []; spawnTimer = 0;
       turretTimer = 0; isGameOver = false; messageText = ''; messageTimer = 0;
       isShopOpen = false; shopElement.className = 'h';
       caveRespawnTimer = CAVE_RESPAWN_INTERVAL_SEC;
@@ -963,6 +737,32 @@
       resetIncomeStats();
       revealAroundPlayer();
     }
+
+    function selectBiome (biome = 'slime_valley') {
+      player.x = STAR_POSITION_PLAYER.x, player.y = STAR_POSITION_PLAYER.y;
+      
+      if (biome == current_biome) return;
+      if (!isMainBase) expedition_time_left = 120;
+
+      if (biome == 'slime_valley') {
+        current_biome = biome;
+        return;
+      }
+      if (biome == 'sand_dunes') {
+        current_biome = biome;
+        if (!blocks.length) {
+          generateWorld();
+          generateFloorTiles();
+          spawnCaveSlimes();
+        }
+        return;
+      }
+    }
+
+    function backToMainBase() {
+      selectBiome(main_biome);
+    }
+    
 
     // Открывает клетки вокруг игрока: в пустоте до радиуса REVEAL_RADIUS, за блоками видно только FOG_SOLID_BLOCKS_VISIBLE блоков
     function revealAroundPlayer() {
@@ -993,7 +793,9 @@
     function useSelectedItem() {
       const item = getSelectedItem();
       if (!item) return;
-      if (item.kind === 'weapon') { player.weaponIndex = item.index; playerAttack(); }
+      
+      if (item.kind === 'weapon' && item.family === 'range') { player.weaponIndex = item.index; playerShoot(); }
+      else if (item.kind === 'weapon' && item.family === 'melee') { player.weaponIndex = item.index; playerAttack(); }
       else if (item.kind === 'tool') { player.toolIndex = item.index; playerDig(); }
       else if (item.kind === 'ladder') placeLadder();
       else if (item.kind === 'dynamite') placeDynamite();
@@ -1127,7 +929,7 @@
       const family = getItemData({ kind, index }).family;
       let slotIndex = player.inventory.findIndex(slot => slot && slot.kind === kind && getItemData(slot).family === family);
       if (slotIndex === -1) slotIndex = player.inventory.indexOf(null);
-      if (slotIndex !== -1) player.inventory[slotIndex] = { kind, index };
+      if (slotIndex !== -1) player.inventory[slotIndex] = { kind, index, family };
     }
 
     function teleportToBase() {
@@ -1144,7 +946,8 @@
       if (isShopOpen) {isShopOpen = false; shopElement.className = 'h'; return;}
       if (!isPlayerInBaseZone()) {showMessage('Магазин открывается в зоне базы'); return;}
       if (waveActive || bossFightActive) {showMessage('Магазин закрыт во время волны!');return;}
-      isShopOpen = true; shopElement.className = ''; renderShop(true);
+      if (!isMainBase) shopTab = 'База';
+      isShopOpen = true; shopElement.className = ''; renderShop(true); 
     }
 
     function damagePlayer(amount) {
@@ -1156,6 +959,7 @@
 
     function damageTarget(target, amount) {
       target.hp -= amount;
+      playTargetHit();
       if (target.isEnemy) target.hurtTimer = 0.12;
       addFloatingText(target.x, target.y - 22, '-' + amount, '#fff');
   
@@ -1199,7 +1003,108 @@
       player.swingAnimTimer = 0.15;
       player.facing = hit.target.x >= cx ? 1 : -1; // поварачивается в сторону врага перед ударом
       damageTarget(hit.target, weapon.damage);
-      playTargetHit();
+    }
+
+    function playerShoot() {
+      if (player.attackTimer > 0 || isGameOver) return;
+      const weapon = WEAPONS[player.weaponIndex];
+      const energyCost = weapon.energyCost * (1 - player.energySaving);
+
+      if (player.energy < energyCost) {addFloatingText(playerCenterX(), player.y - 6, 'Нет энергии для выстрела', '#ffe706'); player.attackTimer = 0.3; return;}
+      player.energy -= energyCost;
+      player.attackTimer = weapon.cooldown;
+      player.swingAnimTimer = 0.15;
+      player.facing = mouse.x >= playerCenterX() ? 1 : -1;
+
+      createProjectile(weapon);
+    }
+
+    function createProjectile(weapon) {
+      const cx = playerCenterX(); 
+      const cy = playerCenterY();
+      
+      const dx = mouse.x - cx;
+      const dy = (mouse.y + cameraY) - cy;
+      const angle = Math.atan2(dy, dx);
+
+      const speed = 500;
+
+      let projectile = {
+        x: cx, 
+        y: cy, 
+        vx: Math.cos(angle) * speed, 
+        vy: Math.sin(angle) * speed, 
+        angle: angle, 
+        distanceTraveled: 0,
+        maxDistance: 1000,
+        damage: weapon.damage,
+
+      };
+
+      projectiles.push(projectile);
+    }
+
+    function isProjectileHit(target, projectile) {
+      const arrowSize = 8;
+      const rect = getEnemyRect(target);
+
+      return projectile.x + arrowSize > rect.left &&
+            projectile.x - arrowSize < rect.left + rect.width &&
+            projectile.y + arrowSize > rect.top &&
+            projectile.y - arrowSize < rect.top + rect.height;
+    }
+
+    function projectileMovement(arrow, dt) {
+      arrow.vy += (GRAVITY - 600) * dt;
+      arrow.x += arrow.vx * dt;
+      arrow.y += arrow.vy * dt;
+      arrow.angle = Math.atan2(arrow.vy, arrow.vx);
+      arrow.distanceTraveled += Math.hypot(arrow.vx, arrow.vy) * dt;
+    }
+
+    function isHitprojectileBlocks(arrow) {
+      const col = Math.floor(arrow.x / TILE_SIZE);
+      const row = Math.floor(arrow.y / TILE_SIZE);
+
+      // Проверяем границы мира и то, является ли блок твердым
+      if (row < 0 || row >= WORLD_HEIGHT || col < 0 || col >= WORLD_WIDTH) return true;
+      const blockType = blocks[row][col];
+      
+      if (blockType !== 0) { // Если это не воздух
+        playTargetHit();
+
+        return true;
+      }
+    }
+
+    function isHitprojectileTargets(arrow) {
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const enemy = enemies[j]; 
+        
+        if (isProjectileHit(enemy, arrow)) {
+          damageTarget(enemy, arrow.damage);
+
+          return true;
+        }
+      }
+    }
+
+    function updateProjectile(dt) {
+      for (let i = projectiles.length - 1; i >= 0; i--) {
+        let arrow = projectiles[i];
+
+        projectileMovement(arrow, dt);
+      
+        let hasHit = false;
+        hasHit = isHitprojectileBlocks(arrow)
+      
+        // Проверяем врагов только если не попали в блок
+        if (!hasHit) hasHit = isHitprojectileTargets(arrow);
+        // Удаляем стрелу, если она во что-то попала или улетела далеко
+        if (hasHit || arrow.distanceTraveled > arrow.maxDistance) {
+          projectiles.splice(i, 1);
+        }
+      }
     }
 
     // ПКМ: удар инструментом по блоку под курсором
@@ -1261,24 +1166,33 @@
 
     // y врага — координата его "ног"
     function createEnemy(slimeTypeIndex, x, y, isCaveSlime, hpMultiplier = 1) {
-      const type = SLIME_TYPES[slimeTypeIndex];
+      const type = ENEMY_TYPES[slimeTypeIndex];
       const hp = Math.round(type.hp * hpMultiplier);
       return {
         x, y, width: type.width, height: type.height, isCaveSlime, isEnemy: true, hp, maxHp: hp, damage: type.damage, shadeColor: type.shadeColor, color: type.color,  speed: type.speed,
-        points: type.points, attackTimer: 0, hurtTimer: 0, velocityY: 0, direction: Math.random() < 0.5 ? 1 : -1, isBoss: type.kind === 'slimeBoss'
+        points: type.points, attackTimer: 0, hurtTimer: 0, velocityY: 0, direction: Math.random() < 0.5 ? 1 : -1, isBoss: type.kind === 'slimeBoss', kind: type.kind
       };
     }
 
     // Сколько [зелёных, синих, желтых] слизней в волне
     function getWaveEnemyCounts(wave) {
-      const enemies = {
-        1: [5, 0, 0], 2: [10, 0, 0], 3: [13, 2, 0],
-        4: [15, 5, 0], 5: [20, 10, 1], 6: [25, 15, 3],
-        7: [25, 20, 6]
+      const count_enemies = {
+          slime_valley: {
+            1: [5, 0, 0], 2: [10, 0, 0], 3: [13, 2, 0],
+            4: [15, 5, 0], 5: [20, 10, 1], 6: [25, 15, 3],
+            7: [25, 20, 6]
+          },
+
+          sand_dunes: {
+            1: [0, 10, 10, 0, 5], 2: [15, 15, 7], 3: [25, 20, 10],
+            4: [25, 30, 12], 5: [30, 30, 15], 6: [10, 45, 18],
+            7: [0, 70, 25]
+          },
+
       };
 
       if (bossFightActive) return [0, 0, 15]
-      if (enemies[wave]) return enemies[wave];
+      if (count_enemies[current_biome][wave]) return count_enemies[current_biome][wave];
 
       const extra  = wave - 7;
 
@@ -1290,9 +1204,12 @@
     }
 
     function getWaveBonus(wave) {
-      const bonuses = {1: 90, 2: 180, 3: 400, 4: 800, 5: 1500, 6: 2200, 7: 2800, 8: 3500, 9: 4200, 10: 5000}
-      if (bonuses[wave]) {
-        return bonuses[wave]
+      const bonuses = {
+        slime_valley: {1: 90, 2: 180, 3: 400, 4: 800, 5: 1500, 6: 2200, 7: 2800, 8: 3500, 9: 4200, 10: 5000 },
+        sand_dunes: {1: 10000, 2: 15000, 3: 20000, 4: 25000, 5: 30000, 6: 40000, 7: 50000, 8: 70000, 9: 80000, 10: 100000}
+      }
+      if (bonuses[current_biome][wave]) {
+        return bonuses[current_biome][wave]
       }
       
       return  1000 * (wave - 3)
@@ -1301,11 +1218,14 @@
     function startWave() {
       waveNumber++;
       waveActive = true;
-      const [greenCount, blueCount, yellowCount] = getWaveEnemyCounts(waveNumber);
+    
+      const enemyCounts = [...getWaveEnemyCounts(waveNumber)];
       spawnQueue = [];
-      for (let i = 0; i < greenCount; i++) spawnQueue.push(GREEN_SLIME);
-      for (let i = 0; i < blueCount; i++) spawnQueue.push(BLUE_SLIME);
-      for (let i = 0; i < yellowCount; i++) spawnQueue.push(YELLOW_SLIME);
+      for (let i = 0; i < enemyCounts.length; i++) {
+        const count = enemyCounts[i];
+        for (let j = 0; j < count; j++) spawnQueue.push(i);
+      }
+      
       spawnQueue.sort(() => Math.random() - 0.5);
       spawnTimer = 0;
 
@@ -1317,14 +1237,14 @@
       bossFightActive = true;
       const boss_delay_width = 100;
 
-      SLIME_TYPES[BOSS_SLIME].width
+      ENEMY_TYPES[BOSS_SLIME].width
 
       spawnQueue = [];
       spawnQueue.push(BOSS_SLIME);
       const fromLeft = Math.random() < 0.5;
       enemies.push(createEnemy(
         spawnQueue.pop(),
-        fromLeft ? - (SLIME_TYPES[BOSS_SLIME].width / 2) - boss_delay_width : WORLD_WIDTH * TILE_SIZE + (SLIME_TYPES[BOSS_SLIME].width / 2) + boss_delay_width,
+        fromLeft ? - (ENEMY_TYPES[BOSS_SLIME].width / 2) - boss_delay_width : WORLD_WIDTH * TILE_SIZE + (ENEMY_TYPES[BOSS_SLIME].width / 2) + boss_delay_width,
         GROUND_Y,
         false
       ))
@@ -1334,10 +1254,11 @@
       const hpMultiplier = 1 + 0.1 * Math.max(0, waveNumber - 3);        // с 4-й волны слизни крепчают
       const fromLeft = Math.random() < 0.5;
       const indexEnemy = spawnQueue.pop();
-      enemies.push(createEnemy(indexEnemy, fromLeft ? - SLIME_TYPES[indexEnemy].width / 2 : WORLD_WIDTH * TILE_SIZE + SLIME_TYPES[indexEnemy].width / 2, GROUND_Y, false, hpMultiplier));
+      enemies.push(createEnemy(indexEnemy, fromLeft ? - ENEMY_TYPES[indexEnemy].width / 2 : WORLD_WIDTH * TILE_SIZE + ENEMY_TYPES[indexEnemy].width / 2, ENEMY_TYPES[indexEnemy].kind === 'bat' ? GROUND_Y - 100 :GROUND_Y, false, hpMultiplier));
     }
 
     function countWaveEnemiesLeft() {return enemies.filter(e => !e.isCaveSlime).length;}
+    function deleteWaveEnemies() {enemies = enemies.filter(e => e.isCaveSlime)}
 
     function updateWaves(dt) {
       if (!waveActive) {
@@ -1362,33 +1283,37 @@
 
       if (!spawnQueue.length && countWaveEnemiesLeft() === 0) {           // босс погиб
         bossFightActive = false;
-        showMessage('Босс побежден! Продолжение следует... ');
+        bossSlimeDead = true;
+        showMessage('Босс побежден!');
       }
     }
 
     // Пещерный слизень: патрулирует, при приближении игрока преследует, подчиняется гравитации
     function updateCaveSlime(slime, dt) {
       const isOnGround = slime.velocityY === 0;
-      const dx = playerCenterX() - slime.x, dy = playerCenterY() - (slime.y - 5);
+      const dx = playerCenterX() - slime.x, dy = playerCenterY() - (slime.y - slime.height / 2);
       const isChasing = Math.hypot(dx, dy) < CAVE_SLIME_CHASE_DISTANCE;
       if (isChasing && Math.abs(dx) > 6) slime.direction = Math.sign(dx);
       const nextX = slime.x + slime.direction * slime.speed * dt;
-      const hitsWall = boxHitsBlocks(nextX - 7, slime.y - 10, 14, 10);
-      const ledgeAhead = !isSolidTile(Math.floor((nextX + slime.direction * 7) / TILE_SIZE), Math.floor((slime.y + 1) / TILE_SIZE));
+      const hitsWall = boxHitsBlocks(nextX - slime.width / 2, slime.y - slime.height, slime.width, slime.height);
+      const ledgeAhead = !isSolidTile(Math.floor((nextX + slime.direction * slime.width / 2) / TILE_SIZE), Math.floor((slime.y + 1) / TILE_SIZE));
       if (hitsWall || (ledgeAhead && !isChasing)) {
         if (!isChasing) slime.direction *= -1;
         else if (hitsWall && isOnGround) {
           // препятствие не выше 2 блоков: над ним (на высоте 2 блоков) место свободно
-          const canStepUp = !boxHitsBlocks(nextX - 7, slime.y - 10 - SLIME_MAX_STEP_BLOCKS * TILE_SIZE, 14, 10);
+          const canStepUp = !boxHitsBlocks(nextX - slime.width / 2, slime.y - slime.height - SLIME_MAX_STEP_BLOCKS * TILE_SIZE, slime.width, slime.height);
           if (canStepUp) slime.velocityY = -SLIME_JUMP_POWER;
         }
       }
       else slime.x = nextX;
       slime.velocityY += GRAVITY * dt;
       const nextY = slime.y + slime.velocityY * dt;
-      if (slime.velocityY > 0 && boxHitsBlocks(slime.x - 7, nextY - 10, 14, 10)) {slime.y = Math.floor(nextY / TILE_SIZE) * TILE_SIZE; slime.velocityY = 0;}
+      if (slime.velocityY > 0 && boxHitsBlocks(slime.x - slime.width / 2, nextY - slime.height, slime.width, slime.height)) {slime.y = Math.floor(nextY / TILE_SIZE) * TILE_SIZE; slime.velocityY = 0;}
       else slime.y = nextY;
-      if (Math.abs(dx) < 12 && Math.abs(dy) < 14 && slime.attackTimer <= 0) {slime.attackTimer = 1; damagePlayer(slime.damage);}
+      if (Math.abs(dx) < slime.width / 2 + player.width / 2 && Math.abs(dy) < slime.height / 2 + player.height / 2 && slime.attackTimer <= 0) {
+        slime.attackTimer = 1;
+        damagePlayer(slime.damage);
+      }
     }
 
     // Слизень волны: идёт к базе, а если игрок на поверхности рядом — к нему
@@ -1400,7 +1325,7 @@
       if (!reachedTarget) {slime.x += Math.sign(targetX - slime.x) * slime.speed * dt; return;}
       if (slime.attackTimer > 0) return;
       slime.attackTimer = 1;
-      if (playerNearby) damagePlayer(slime.damage); else baseState.hp -= slime.damage;
+      if (playerNearby) damagePlayer(slime.damage); else (isMainBase ? baseState.hp -= slime.damage : miniBaseState.hp -= slime.damage);
     }
 
     function updateEnemies(dt) {
@@ -1413,6 +1338,8 @@
 
     // Орудие базы стреляет по ближайшему наземному врагу
     function updateTurret(dt) {
+      if (!isMainBase) return;
+  
       turretTimer -= dt;
       if (baseState.turretLevel && turretTimer <= 0) {
         let target = null, targetDistance = Infinity;
@@ -1435,16 +1362,44 @@
     }
 
     function updateRegeneration(dt) {
-      const inBase = isPlayerInBaseZone();
-      player.energy = Math.min(player.maxEnergy, player.energy + (inBase ? baseState.energyRegen : player.energyRegen) * dt);
-      player.hp = Math.min(player.maxHp, player.hp + (inBase ? baseState.playerHealRate : player.hpRegen) * dt);
-      if (baseState.repairRate && baseState.hp > 0) baseState.hp = Math.min(baseState.maxHp, baseState.hp + baseState.repairRate * dt);
+      updatePlayerEnergy(dt);
+      updatePlayerHealth(dt);
     }
+
+    function updatePlayerEnergy(dt) {
+      const inBase = isPlayerInBaseZone();
+      let rate = player.energyRegen;
+      
+      if (inBase) {
+        rate = isMainBase ? baseState.energyRegen : miniBaseState.energyRegen
+      }
+
+      player.energy = Math.min(player.maxEnergy, player.energy + rate * dt)
+    }
+
+    function updatePlayerHealth(dt) {
+      const inBase = isPlayerInBaseZone();
+      let rate = player.hpRegen;
+
+      if (inBase) {
+        rate = isMainBase ? baseState.playerHealRate : miniBaseState.playerHealRate
+      }
+
+      player.hp = Math.min(player.maxHp, player.hp + rate * dt);
+    }
+
+    function updateBaseRepair(dt) {
+      if (baseState.repairRate && baseState.hp > 0) {
+        baseState.hp = Math.min(baseState.maxHp, baseState.hp + baseState.repairRate * dt);
+      }
+    }
+
+    
 
     function updateOxygen(dt) {
       const NoOxygenMultiplyDamage = 5
       const depth = getDepthPlayer();
-      const layer = BLOCK_LAYERS.find(layer => depth < layer.maxDepth);
+      const layer = BIOME_BLOCK_LAYERS[current_biome].find(layer => depth < layer.maxDepth);
       if (depth <= player.oxygenFreeDepth) {
         player.oxygen = Math.min(player.maxOxygen, player.oxygen) + (player.oxygenRegen * dt); return  
       } else {
@@ -1473,6 +1428,37 @@
       earnPoints(baseState.miningRate * dt);
     }
 
+    function updateMinibase() {
+      if (isMainBase) return;
+      if (miniBaseState.hp <= 0) {
+        waveNumber--;
+        waveActive = false;
+        spawnQueue = [];
+        waveTimer = waveNumber === 0 ? FIRST_WAVE_DELAY_SEC :  Math.min(waveNumber + 3, MAX_WAVE_DELAY_MIN) * 60;
+        deleteWaveEnemies();
+        backToMainBase();
+        showMessage('Базу экспедиции сломали!');
+        expedition_time_left = 120;
+      }
+    }
+
+    function updateExpeditionTime(dt) {
+      if (isMainBase) return;
+      if (waveActive) return;
+      expedition_time_left -= dt;
+      if (expedition_time_left <= 0) {
+        expedition_time_left = 120;
+        backToMainBase();
+        showMessage('Время экспедиции закончилось!');
+      }
+    }
+
+    function updateFuel(dt) {
+      if (!bossSlimeDead) return;
+      if (!isMainBase) return;
+      if (baseState.fuel >= baseState.maxFuel) return;
+      baseState.fuel += baseState.fuelRegen * dt;
+    }
 
     function checkDefeat() {
       if (baseState.hp <= 0) {baseState.hp = 0; isGameOver = true; isShopOpen = false; shopElement.className = 'h';}
@@ -1503,6 +1489,10 @@
       }
     }
 
+    function updateUi() {
+      document.getElementById('dirtButton').classList.toggle('hidden', !bossSlimeDead); 
+    }
+
     function updateGame(dt) {
       player.attackTimer -= dt; player.digTimer -= dt; player.teleportTimer -= dt; player.swingAnimTimer -= dt;
       messageTimer -= dt;
@@ -1510,9 +1500,11 @@
       updateClouds(dt);
       updatePlayerMovement(dt);
       cameraY = Math.max(0, Math.min(WORLD_HEIGHT * TILE_SIZE - CANVAS_HEIGHT, playerCenterY() - CANVAS_HEIGHT / 2));
+      updateUi();
       revealAroundPlayer();
       if (mouse.leftDown) useSelectedItem();
       updateRegeneration(dt);
+      updateBaseRepair(dt);
       updateOxygen(dt);
       updateMiningBase(dt);
       updateTurret(dt);
@@ -1520,10 +1512,15 @@
       updateWaves(dt);
       updateBossFight();
       updateIncomeStats(dt);
+      updateExpeditionTime(dt);
+      updateProjectile(dt)
       updateEnemies(dt);
       updateDynamites(dt);
       checkDefeat();
+      updateMinibase(dt);
+      updateFuel(dt);
       updateFloatingTexts(dt);
+      updateTeleportButton();
     }
 
     /* ======================= 9. МАГАЗИН И ИНТЕРФЕЙС ======================= */
@@ -1592,6 +1589,29 @@
       return { title, description: description + note, cost, state, onBuy: () => addItemToInventory(kind, index) };
     }
 
+    function buildUpgradeShopItems(kind, items, getInfo) {
+      const result = [];
+      const seen = new Set();   // семейства, для которых предмет уже найден
+
+      for (let item_index = 0; item_index < items.length; item_index++) {
+        const family = items[item_index].family;
+        if (seen.has(family)) continue;
+
+        const status = getInventoryStatus(kind, item_index);
+        if (status === 'owned' || status === 'obsolete') continue;
+
+        seen.add(family);
+        const info = getInfo(items[item_index]);
+        result.push(buildInventoryShopItem(kind, item_index, info.title, info.description, info.cost));
+      }
+
+      // выкуплено всё на вкладке
+      if (result.length === 0) {
+        return [{ title: 'Всё куплено', description: 'Больше нечего покупать', cost: 0, state: 'max', onBuy: () => {} }];
+      }
+      return result;
+    }
+
     function buildStackShopItem(kind, title, description, packSize, price, stackLimit) {
       const owned = countStack(kind);
       const hasSlot = findStackSlot(kind) !== -1 || player.inventory.includes(null);
@@ -1622,16 +1642,37 @@
         const keys = visibleShopItems[shopTab] || [];
         return keys.map(key => buildShopItem(shopTab, key)).filter(Boolean);
       }
-      if (shopTab === 'Оружие') return WEAPONS.map((w, i) => buildInventoryShopItem('weapon', i, w.name,
-        'Урон ' + w.damage + ' · 1 удар/' + w.cooldown + 'с · энергия ' + w.energyCost + ' · радиус ' + w.radiusTiles + ' бл.', w.cost));
-      if (shopTab === 'Инструменты') return TOOLS.map((t, i) => buildInventoryShopItem('tool', i, t.name,
-        'Уровень ' + t.level + ' · копание ' + t.power + ' ед. · энергия ' + t.energyCost + ' · радиус ' + t.radiusTiles + ' бл.', t.cost));
+      if (shopTab === 'Оружие') return buildUpgradeShopItems('weapon', WEAPONS, w => ({
+        title: w.name,
+        description: 'Урон ' + w.damage + ' · 1 удар/' + w.cooldown + 'с · энергия ' + w.energyCost + ' · радиус ' + w.radiusTiles + ' бл.',
+        cost: w.cost
+      }));
+      if (shopTab === 'Инструменты') return buildUpgradeShopItems('tool', TOOLS, t => ({
+        title: t.name,
+        description: 'Уровень ' + t.level + ' · копание ' + t.power + ' ед. · энергия ' + t.energyCost + ' · радиус ' + t.radiusTiles + ' бл.',
+        cost: t.cost
+      }));
       const items = visibleShopItems[shopTab].map(buildUpgradeItem);
       if (shopTab === 'База') {
-        const repairItem = baseState.hp < baseState.maxHp
-          ? {title: 'Починить базу', description: 'Полностью восстановить HP (' + Math.ceil(baseState.hp) + '/' + baseState.maxHp + ')', cost: Math.ceil((baseState.maxHp - baseState.hp) * waveNumber), state: 'buy', onBuy: () => {baseState.hp = baseState.maxHp;}}
-          : {title: 'Починить базу', description: 'База цела', state: 'max'};
-        items.splice(2, 0, repairItem);                            // ремонт идёт третьим в списке базы
+        if (isMainBase) {
+          const repairItem = baseState.hp < baseState.maxHp
+            ? {title: 'Починить базу', description: 'Полностью восстановить HP (' + Math.ceil(baseState.hp) + '/' + baseState.maxHp + ')', cost: Math.ceil((baseState.maxHp - baseState.hp) * waveNumber), state: 'buy', onBuy: () => {baseState.hp = baseState.maxHp;}}
+            : {title: 'Починить базу', description: 'База цела', state: 'max'};
+          items.splice(2, 0, repairItem);                            // ремонт идёт третьим в списке базы
+          if (miniBaseState.hp <= 0) {
+            const restoreMiniBase = {title: 'Восстановить базу экспедиции', description: 'Полностью восстановить HP (' + Math.ceil(miniBaseState.hp) + '/' + miniBaseState.maxHp + ')', cost: 50000, state: 'buy', onBuy: () => {miniBaseState.hp = miniBaseState.maxHp;}}
+            items.splice(0, 0, restoreMiniBase);
+          }
+          if (bossSlimeDead) {
+            const fuelItem = baseState.fuel < baseState.maxFuel
+              ? {title: 'Пополнить топливо', description: 'Полностью восстановить топливо (' + Math.ceil(baseState.fuel) + '/' + baseState.maxFuel + ')', cost: Math.ceil((baseState.maxFuel - baseState.fuel) * 1000), state: 'buy', onBuy: () => {baseState.fuel = baseState.maxFuel;}}
+              : {title: 'Пополнить топливо', description: 'Максимум топлива', state: 'max'};
+            items.splice(8, 0, fuelItem);     
+          }
+        } else {
+          const makeMainBase = { title: 'Сделать эту базу Основной', description: 'Предыдущая база и биом перестанет быть основными!', cost: 150000, state: 'buy', onBuy: () => {getMainBase().biome.isMainBase = false; isMainBase = true; main_biome = current_biome;} }
+          return [makeMainBase]
+        }
       }
       return items;
     }
@@ -1640,18 +1681,82 @@
     // Перерисовывает окно магазина. Если не force — только когда HTML реально изменился (чтобы не терять клики)
     function renderShop(force) {
       currentShopItems = getShopItems();
-      let html = '<div class="tabs">' + SHOP_TAB_NAMES.map(name => '<button data-tab="' + name + '" class="' + (name === shopTab ? 'on' : '') + '">' + name + '</button>').join('')
+      let html = '<div class="tabs">' + getShopTabs().map(name => '<button data-tab="' + name + '" class="' + (name === shopTab ? 'on' : '') + '">' + name + '</button>').join('')
         + '<span style="margin-left:auto">Очки: <b style="color:var(--ac)">' + Math.floor(points) + '</b>' + (devModeEnabled ? ' · DEV' : '') + '</span></div>';
       if (currentShopItems.length === 0) {
         html += '<div class="it empty"><div>Еще чу-чуть и тут что-то появится!<small>Продолжай играть — товары откроются сами.</small></div></div>';
       } else {
         html += currentShopItems.map((item, index) => {
-          const label = item.state === 'equipped' ? 'В инвентаре' : item.state === 'own' ? 'Взять' : item.state === 'max' ? '—' : 'Купить ' + (devModeEnabled ? '0' : item.cost);
+          const label = item.state === 'equipped' ? 'В инвентаре' : item.state === 'own' ? 'Взять' : item.state === 'max' ? '—' : 'Купить ' + approximateNumber(item.cost);
           const disabled = item.state === 'equipped' || item.state === 'max' || (item.state === 'buy' && !devModeEnabled && points < item.cost);
           return '<div class="it"><div>' + item.title + '<small>' + item.description + '</small></div><button data-i="' + index + '" ' + (disabled ? 'disabled' : '') + '>' + label + '</button></div>';
         }).join('');
       }
       if (force || html !== lastShopHtml) {shopElement.innerHTML = html; lastShopHtml = html;}
+    }
+
+    const dirtModal = document.getElementById('dirtModal');
+    let lastDirtHtml = '';
+
+    dirtModal.addEventListener('click', (e) => {
+      const planetEl = e.target.closest('.planet');
+      if (!planetEl) return;
+
+      const biomeId = planetEl.dataset.biome;
+      const biome = BIOMES.find(b => b.id === biomeId);
+      if (!biome) return;
+
+      if (biome.costPoints > points || biome.costFuel > baseState.fuel || miniBaseState.hp <= 0 || waveActive ) return;
+      if (current_biome === biomeId) return;
+      points -= biome.costPoints;
+      baseState.fuel -= biome.costFuel;
+      selectBiome(biomeId);
+      toggleDirtModal();
+    });
+  
+    function renderDirtModal(force) {
+      let planetsHtml = '';
+      for (const biome of BIOMES) {
+        const selected = biome.id === current_biome ? ' selected' : '';
+        const disabledClass = ((points >= biome.costPoints) && (baseState.fuel >= biome.costFuel) && (miniBaseState.hp > 0) && !waveActive) || (biome.id === main_biome && !waveActive) ? '' : ' disabled';
+        const costPointsText = main_biome === biome.id && biome.costPoints === 0 ? '' : `Очков: ${biome.costPoints}`;
+        const costFuelText = main_biome === biome.id && biome.costFuel === 0 ? '' : `Топливо: ${biome.costFuel}`;
+        const repairText = miniBaseState.hp <= 0 && biome.id !== main_biome ? 'Почините базу в магазине' : '';
+        planetsHtml +=
+          `<div class="planet${selected}${disabledClass}" data-biome="${biome.id}">` +
+            `<div class="icon"></div>` +
+            `<div class="name">${biome.name}</div>` + 
+            `<div class="cost">${costPointsText}</div>` +
+            `<div class="cost">${costFuelText}</div>` +
+            `<div class="cost">${repairText}</div>` +
+          `</div>`;
+      }
+
+      const html = '<div class="box">'
+        +   '<div class="title">Биомы</div>'
+        +   '<div class="body">' + planetsHtml + '</div>'
+        +   '<div class="hint">Escape - выход</div>'
+        + '</div>';
+
+      if (force || html !== lastDirtHtml) {
+        dirtModal.innerHTML = html;
+        lastDirtHtml = html;
+      }
+    }
+
+    function openDirtModal() {
+        renderDirtModal(true);
+        dirtModal.classList.remove('hidden');
+        isDirtWindowOpen = true;
+    }
+
+    function closeDirtModal() {
+        dirtModal.classList.add('hidden');
+        isDirtWindowOpen = false;
+    }
+
+    function toggleDirtModal() {
+      !isDirtWindowOpen ? openDirtModal() : closeDirtModal();
     }
 
     shopElement.addEventListener('click', event => {
@@ -1674,13 +1779,16 @@
 
     // Верхняя панель со статами
     function updateHud() {
+      const expeditionText = isMainBase ? '' : 'Время экспедиции: <b>' + formatMinutesSeconds(expedition_time_left) + '</b>'
+      const fuelText = bossSlimeDead ? 'Топливо: <b>' + Math.round(baseState.fuel) + '/' + baseState.maxFuel + '</b>' : '';
       const waveText = waveActive ? 'идёт волна ' + waveNumber + ' · врагов: ' + (countWaveEnemiesLeft() + spawnQueue.length)
         : 'волна ' + (waveNumber + 1) + ' через <b>' + formatMinutesSeconds(waveTimer) + '</b>';
-      hudElement.innerHTML = '<span>Очки: <b>' + Math.floor(points) + '</b></span>'
+      hudElement.innerHTML = '<span>Очки: <b>' + approximateNumber(Math.floor(points)) + '</b></span>'
         + '<span>HP: <b>' + Math.ceil(player.hp) + '/' + player.maxHp + '</b></span>'
         + '<span>Энергия: <b>' + Math.floor(player.energy) + '/' + player.maxEnergy + '</b></span>'
-        + '<span style="color: yellow">' + (getSelectedItem() ? getItemData(getSelectedItem()).name : 'Пусто') + '</span>'
-        + '<span>' + waveText + '</span>';
+        + '<span>' + waveText + '</span>'
+        + '<span>' + fuelText +'</span>'
+        + '<span>' + expeditionText + '</span>';
       devLabelElement.textContent = devModeEnabled ? 'DEV' : '';
       if (isShopOpen) renderShop(false);
     }
@@ -1697,15 +1805,29 @@
       if (event.repeat) return;
       if (/^Digit[1-9]$/.test(event.code) && !isShopOpen) player.selectedSlot = Number(event.code.slice(5)) - 1;
       if (event.code === 'KeyF') teleportToBase();
-      if (event.code === 'Escape' && isShopOpen) { toggleShop(); return; }
+      if (event.code === 'Escape' && isShopOpen) { toggleShop();  return; }
       if (event.code === 'KeyB') toggleShop();
+      if (event.code === 'Escape' && isDirtWindowOpen) { toggleDirtModal(); return; }
+      if (event.code === 'KeyH') showHitboxes = !showHitboxes;;
     });
     addEventListener('keyup', event => {keysDown[event.code] = false;});
+
+    const teleportButton = document.getElementById('teleportButton');
+    const teleportLabel = document.getElementById('teleportLabel');
+    const TELEPORT_ICON_HTML = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 12 12 4l9 8h-3v8h-4v-5h-4v5H6v-8z" fill="#e8e8ee"/></svg>';
+    let lastTeleportLabel = '';
+
+    teleportButton.onmousedown = event => event.preventDefault();          // кнопка не получает фокус, иначе пробел (прыжок) нажимал бы её
+    teleportButton.onclick = () => { if (!isShopOpen && !isGameOver) teleportToBase(); };
+
+    const dirtButton = document.getElementById('dirtButton');
+    dirtButton.onmousedown = event => event.preventDefault();
+    dirtButton.addEventListener('click', () => { toggleDirtModal(); });
 
     function updateMousePosition(event) {
       const rect = canvas.getBoundingClientRect();
       mouse.x = (event.clientX - rect.left) * canvas.width / rect.width;
-      mouse.y = (event.clientY - rect.top) * canvas.height / rect.height;
+      mouse.y = ((event.clientY - rect.top) * canvas.height / rect.height);
     }
     canvas.addEventListener('mousemove', updateMousePosition);
     canvas.addEventListener('contextmenu', event => event.preventDefault());       // ПКМ не открывает меню браузера
@@ -1729,7 +1851,7 @@
       player.selectedSlot = (player.selectedSlot + Math.sign(event.deltaY) + SLOT_COUNT) % SLOT_COUNT;
     }, { passive: false });
 
-  
+    document.getElementById('toggle_world').onclick = () => {selectBiome(current_biome === 'slime_valley' ? 'sand_dunes' : 'slime_valley');}; // Тумблер миров
     document.getElementById('toggle_music').onclick = () => {  bgMusic.paused ? bgMusic.play() : bgMusic.pause(); }; // Тумблер выключения музыки
     document.getElementById('callw').onclick = () => {if (!waveActive && !isGameOver) waveTimer = 0;};   // позвать волну без ожидания
     document.getElementById('okc').onclick = () => {                                                          // инструмент разработчика
@@ -1754,7 +1876,6 @@
       updateFps(realDelta);
       if (!isGameOver && !isChartOpen && !isShopOpen) updateGame(dt);
       render();
-      updateTeleportButton();
       hudTimer -= dt;
       if (hudTimer <= 0) {updateHud(); hudTimer = 0.15;}
       requestAnimationFrame(gameLoop);
