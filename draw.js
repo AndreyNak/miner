@@ -535,20 +535,36 @@ function drawTurretBeams() {
 
 function drawPlayer() {
     const x = Math.round(player.x), y = Math.round(player.y);
+    const moving = keysDown.KeyD || keysDown.KeyA
+    moveSpeedRange = {
+      95: 1,
+      110: 1.2,
+      130: 1.4,
+      155: 1.6
+    }
+    
+    let leg1 = 0;
+    let leg2 = 0;
+
+    if (moving) {
+      const swing = Math.sin(performance.now() * (0.018 * moveSpeedRange[player.moveSpeed])) * 1;
+      leg1 = Math.round(swing);
+      leg2 = -leg1;
+    }
     ctx.fillStyle = '#f1c27d'; ctx.fillRect(x + 2, y, 8, 7);                                  // голова
     ctx.fillStyle = '#f5c542'; ctx.fillRect(x + 1, y - 2, 10, 3);                             // каска
     ctx.fillStyle = '#000'; ctx.fillRect(x + (player.facing > 0 ? 7 : 3), y + 3, 1, 2);       // глаз
     ctx.fillStyle = '#2f6fcf'; ctx.fillRect(x + 1, y + 7, 10, 6);                             // тело
-    ctx.fillStyle = '#3b3b4a'; ctx.fillRect(x + 2, y + 13, 3, 5); ctx.fillRect(x + 7, y + 13, 3, 5);   // ноги
+    ctx.fillStyle = '#3b3b4a'; ctx.fillRect(x + 2 + leg1, y + 13, 3, 5); ctx.fillRect(x + 7 + leg2, y + 13, 3, 5);   // ноги
     const held = getSelectedItem();
     if (held) {
-        const weaponLength = held.kind === 'weapon' && held.index ? 12 : 9;
-        ctx.fillStyle = getItemColor(held);
-        if (player.swingAnimTimer > 0 && held.kind === 'weapon') ctx.fillRect(player.facing > 0 ? x + 10 : x - weaponLength + 2, y + 7, weaponLength, 3);
-        else ctx.fillRect(player.facing > 0 ? x + 10 : x - 2, y + 1, 3, weaponLength);
+      const weaponLength = held.kind === 'weapon' && held.index ? 12 : 9;
+      ctx.fillStyle = getItemColor(held);
+      if (player.swingAnimTimer > 0 && held.kind === 'weapon') ctx.fillRect(player.facing > 0 ? x + 10 : x - weaponLength + 2, y + 7, weaponLength, 3);
+      else ctx.fillRect(player.facing > 0 ? x + 10 : x - 2, y + 1, 3, weaponLength);
     }
     if (player.oxygen < player.maxOxygen) {    
-        drawBar(playerCenterX() - 14, playerCenterY() - 20, 30, 4, player.oxygen / player.maxOxygen, '#3385ff') // кислород над игроком
+      drawBar(playerCenterX() - 14, playerCenterY() - 20, 30, 4, player.oxygen / player.maxOxygen, '#3385ff') // кислород над игроком
     }
 }
 
