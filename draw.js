@@ -547,7 +547,7 @@ function drawPlayer() {
     let leg2 = 0;
 
     if (moving) {
-      const swing = Math.sin(performance.now() * (0.018 * moveSpeedRange[player.moveSpeed])) * 1;
+      const swing = Math.sin(performance.now() * (0.018 * moveSpeedRange[player.moveSpeed]));
       leg1 = Math.round(swing);
       leg2 = -leg1;
     }
@@ -723,13 +723,31 @@ function drawScreenOverlay() {
     ctx.textAlign = 'left'; ctx.font = '12px monospace';
 
     // FPS 
-    ctx.fillStyle = '#000a'; ctx.fillRect(6, 6, 110, 20);
+    ctx.fillStyle = '#000a'; ctx.fillRect(6, 6, 120, 20);
     ctx.fillStyle = fps >= 50 ? '#7CFC8A' : fps >= 30 ? '#f5c542' : '#ff6b6b';
     ctx.fillText('FPS: ' + fps, 12, 20);
 
+    let currentY = 30; 
+    const boxHeight = 20;
+    const padding = 4; // Отступ между плашками
+
     // Глубина
-    ctx.fillStyle = '#000a'; ctx.fillRect(6, 30, 110, 20);
-    ctx.fillStyle = '#fff'; ctx.fillText('Глубина: ' + depth + ' бл.', 12, 44);
+    if (showDetecterDepth) {
+      ctx.fillStyle = '#000a'; ctx.fillRect(6, currentY, 120, boxHeight);
+      ctx.fillStyle = '#fff'; ctx.fillText('Глубина: ' + depth + ' бл.', 12, currentY + 14);
+      
+      currentY += boxHeight + padding; 
+    }
+
+    // Потребелние кислорода
+    if (showOxygenCost) {
+      const layer = BIOME_BLOCK_LAYERS[current_biome].find(layer => depth < layer.maxDepth);
+      ctx.fillStyle = '#000a';ctx.fillRect(6, currentY, 120, boxHeight);
+      ctx.fillStyle = '#fff';ctx.fillText('Пот. O²: ' + layer.oxygenCost + '/сек.', 12, currentY + 14);
+      
+      currentY += boxHeight + padding; 
+    }
+
 
     ctx.textAlign = 'center';
     if (messageTimer > 0) {
@@ -741,6 +759,20 @@ function drawScreenOverlay() {
         ctx.fillStyle = '#fff'; ctx.font = 'bold 36px monospace'; ctx.fillText('База разрушена', 480, 240);
         ctx.font = '16px monospace'; ctx.fillText('Волн начато: ' + waveNumber + ' · Нажми, чтобы начать заново', 480, 280);
     }
+}
+
+function drawOxygenZone() {
+  if (!showOxygenZone) return;
+  const safeDepth = (SURFACE_ROW + player.oxygenFreeDepth) * TILE_SIZE;
+
+  ctx.beginPath();
+  ctx.moveTo(0, safeDepth);
+  ctx.lineTo(WORLD_WIDTH * TILE_SIZE, safeDepth);
+  
+  ctx.strokeStyle = '#02dff8'; 
+  ctx.lineWidth = 3;
+
+  ctx.stroke();
 }
 
 function drawOxygenPulse() {
@@ -830,6 +862,78 @@ function drawProjectiles() {
   }
 }
 
+function drawPhoneUpgrades() {
+  for (const upgrade of phoneUpgrades) {
+    const cx = upgrade.x;
+    const cy = upgrade.y;
+
+    const w = TILE_SIZE;
+    const h = TILE_SIZE * 1.5;
+    
+    const left = cx - w / 2;
+    const top = cy - h;
+
+    ctx.fillStyle = '#000a';ctx.fillRect(left + 4, cy - 4, w - 8, 4);
+    ctx.fillStyle = '#555';ctx.fillRect(left, cy - TILE_SIZE / 2, w, TILE_SIZE / 2);
+    ctx.fillStyle = '#777';ctx.fillRect(left + 2, cy - TILE_SIZE / 2 + 2, w - 4, 4);
+
+    const pedestalW = w * 0.6;
+    const pedestalLeft = cx - pedestalW / 2;
+    ctx.fillStyle = '#444';
+    ctx.fillRect(pedestalLeft, top + TILE_SIZE / 2, pedestalW, TILE_SIZE / 2);
+
+
+    let glowColor = '#0ff';
+    if (upgrade.id === 'open_phone') glowColor = '#0f0'; // Зеленый (телефон)
+    else if (upgrade.id === 'detecter_depth') glowColor = '#f0f'; // Фиолетовый (глубина)
+    else if (upgrade.id === 'oxygen_zone') glowColor = '#0af'; // Синий (зона кислорода)
+    else if (upgrade.id === 'oxygen_cost') glowColor = '#ff0'; // Желтый (потребление)
+
+    const orbSize = TILE_SIZE * 0.4;
+    const orbX = cx - orbSize / 2;
+    const orbY = top + 8;
+
+    ctx.fillStyle = glowColor + '44'; 
+    ctx.fillRect(orbX - 2, orbY - 2, orbSize + 4, orbSize + 4);
+
+    ctx.fillStyle = glowColor;
+    ctx.fillRect(orbX, orbY, orbSize, orbSize);
+
+    ctx.fillStyle = '#000';
+    const iconSize = 4; 
+    const iconX = cx - iconSize / 2;
+    const iconY = orbY + orbSize / 2 - iconSize / 2;
+
+    if (upgrade.id === 'detecter_depth') {
+      ctx.fillRect(iconX, iconY - 2, 2, 6); 
+      ctx.fillRect(iconX - 2, iconY + 2, 6, 2);
+    } else if (upgrade.id === 'oxygen_zone') {
+      ctx.fillRect(iconX, iconY, 2, 2);
+    } else if (upgrade.id === 'open_phone') {
+      ctx.fillRect(iconX - 2, iconY - 2, 6, 6);
+      ctx.fillStyle = glowColor;
+      ctx.fillRect(iconX - 1, iconY - 1, 4, 4);
+    }
+  }
+}
+
+function drawPhoneUpgradeUI() {
+  const nearby = getNearbyPhoneUpgrade();
+  
+  if (nearby) {
+    const textX = nearby.x;
+    const textY = nearby.y - 40;
+
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+
+    ctx.fillStyle = '#000a';ctx.fillRect(textX - 60, textY - 14, 120, 20);
+    ctx.fillStyle = '#f5c542';ctx.fillText('E — активировать', textX, textY);
+
+    ctx.textAlign = 'left'; 
+  }
+}
+
 function render() {
   ctx.save();
   ctx.translate(0, -Math.round(cameraY));                      // камера следует за игроком по вертикали
@@ -837,20 +941,23 @@ function render() {
   const rowFrom = Math.max(SURFACE_ROW, Math.floor(cameraY / TILE_SIZE));
   const rowTo = Math.min(WORLD_HEIGHT - 1, Math.ceil((cameraY + CANVAS_HEIGHT) / TILE_SIZE));
 
-  drawTerrain(rowFrom, rowTo)
+  drawTerrain(rowFrom, rowTo);
   drawLadders();
   drawDynamites();
   isMainBase ? drawBase() : drawMinibase();
   drawProjectiles();
   drawEnemies();
   drawHitboxes();
+  drawPhoneUpgrades();
   drawChests();
   drawTurretBeams();
   drawPlayer();
   drawExplosions();
   drawFog(rowFrom, rowTo);
+  drawOxygenZone();
   drawBlockHighlight();
   drawLadderPlacementPreview();
+  drawPhoneUpgradeUI();
   drawFloatingTexts();
   ctx.restore();
   drawOxygenPulse();

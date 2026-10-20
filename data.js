@@ -238,7 +238,12 @@ const CAVE_CHEST_LAYERS = [
   { maxDepth: 120, spawnChance: 0.025, chest: { points: 1000, hp: 10, maxHp: 10, width: 20, height: 16 } },
   { maxDepth: Infinity, spawnChance: 0.060, chest: { points: 1000, hp: 10, maxHp: 10, width: 20, height: 16 } }
 ]
-
+const PHONE_UPGRADES = [
+  {id: 'open_phone', minDepth: 0, maxDepth: 0},
+  {id: 'detecter_depth', minDepth: 15, maxDepth: 35},
+  {id: 'oxygen_zone', minDepth: 50, maxDepth: 70},
+  {id: 'oxygen_cost', minDepth: 90, maxDepth: 110},
+]
 
 // Какие улучшения показывать на вкладках магазина
 const SHOP_TABS = {

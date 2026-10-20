@@ -21,6 +21,7 @@
     <button id="dirtButton" class="hidden" title="Земля"></button>
     <div id="modal" class="h"></div>
     <div id="dirtModal" class="hidden"></div>
+    <div id="phoneModal" class="hidden"></div>
   </div>
   <div id="chartOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0d0f14">
     <canvas id="incomeChart" style="display:block;width:100%;height:100%"></canvas>
@@ -28,7 +29,7 @@
   <div id="help">A/D — ходить · W/Пробел — прыжок · ПКМ — копать · ЛКМ — бить оружием · F — телепорт на базу · B —
     магазин (на базе) · G - график · 
     <button id="callw">Позвать волну сейчас</button>
-    <button id="toggle_world">Сменить мир</button>
+    <button id="toggle_world" class="hidden">Сменить мир</button>
     <button id="toggle_music" title="Музыка">🎵</button>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/approximate-number@2.1.1/lib/approximate-number.js"></script>
@@ -350,6 +351,7 @@
       'blocks',           // blocks[строка][столбец] — тип блока (0 = пусто)
       'blockDurability',  // оставшаяся крепкость
       'floorTiles',       // пустые ячейки
+      'phoneUpgrades',    // Улучшения для телефона
       'ladders',          // ladders[строка][столбец] = true, если стоит лестница
       'explored',         // открыта ли клетка из тумана
       'dynamites',        // поставленный динамит: { col, row, timer }
@@ -390,6 +392,7 @@
             blocks: [],
             blockDurability: [],
             floorTiles: [],
+            phoneUpgrades: [],
             explored: [],
             enemies: [],
             ladders: [], 
@@ -406,6 +409,7 @@
             blocks: [],
             blockDurability: [],
             floorTiles: [],
+            phoneUpgrades: [],
             explored: [],
             enemies: [],
             ladders: [], 
@@ -434,7 +438,12 @@
     let miniBaseState;          // состояние базы экспедиции
     let ownedWeapons = [], ownedTools = [];
     let upgradeLevels = {};     // сколько ступеней купили в каждом улучшении
-
+    let avaliablePhoneUpgrades = [];
+    let isPhoneOpen = false;
+    let showOxygenCost = false;
+    let showOxygenZone = false;
+    let showDetecterDepth = false;
+    let canOpenPhone = false;
     let spawnQueue = [], spawnTimer = 0;
     let canSummonSlimeBoss = false, bossFightActive = false, bossSlimeDead = false;
     let isGameOver = false;
@@ -580,8 +589,10 @@
     }
 
     function generateWorld() {
-      generateBlocks()
-      generateCaves()
+      generateBlocks();
+      generateCaves();
+      generateFloorTiles();
+      spawnPhoneUpgrades();
     }
 
     function createPlayer() {
@@ -681,6 +692,40 @@
       }
     }
 
+    function spawnPhoneUpgrades() {
+      const surfaceUpgrade = PHONE_UPGRADES.find(u => u.id === 'open_phone');
+      
+      if (surfaceUpgrade) {
+        const padding = 5;
+        const minCol = padding;
+        const maxCol = WORLD_WIDTH - padding;
+        const randomCol = Math.floor(Math.random() * (maxCol - minCol + 1)) + minCol;
+
+        phoneUpgrades.push({
+          id: surfaceUpgrade.id,
+          x: randomCol * TILE_SIZE + TILE_SIZE / 2,
+          // Y на 1 пиксель выше земли, чтобы он стоял ровно на траве
+          y: SURFACE_ROW * TILE_SIZE + 1, 
+        });
+      }
+
+      const caveUpgrades = PHONE_UPGRADES.filter(u => u.id !== 'open_phone');
+      
+      for (const upgradeDef of caveUpgrades) {
+        const validTiles = floorTiles.filter(tile => tile.row >= upgradeDef.minDepth && tile.row <= upgradeDef.maxDepth);
+
+        const randomIndex = Math.floor(Math.random() * validTiles.length);
+        const chosenTile = validTiles[randomIndex];
+
+        phoneUpgrades.push({
+          id: upgradeDef.id,
+          x: chosenTile.col * TILE_SIZE + TILE_SIZE / 2,
+          y: (chosenTile.row + 1) * TILE_SIZE,
+        });
+      }
+      
+    }
+
     function updateCaveRespawn(dt) {
       caveRespawnTimer -= dt;
       if (caveRespawnTimer > 0) return;
@@ -712,6 +757,8 @@
       current_planet = 'earth';
       current_biome = 'slime_valley';
       main_biome = 'slime_valley';
+      avaliablePhoneUpgrades = [];
+      canOpenPhone = false; showDetecterDepth = false; showOxygenZone = false; showOxygenCost = false;
       createBlockTextures();
       generateWorld();
       createPlayer();
@@ -719,8 +766,7 @@
       upgradeLevels = {};
       baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0, maxFuel: 50, fuelRegen: 0.5, fuel: 0};
       miniBaseState = {hp: 500, maxHp: 500, energyRegen: 25, playerHealRate: 12}
-      explosions = [];
-      floatingTexts = []; turretBeams = [];
+      floatingTexts = [];
       canSummonSlimeBoss = false;
       visibleShopItems = {
         'Персонаж': ['energy', 'energyRegen'],
@@ -731,7 +777,6 @@
       turretTimer = 0; isGameOver = false; messageText = ''; messageTimer = 0;
       isShopOpen = false; shopElement.className = 'h';
       caveRespawnTimer = CAVE_RESPAWN_INTERVAL_SEC;
-      generateFloorTiles();
       spawnCaveSlimes();
       spawnCaveChests();
       resetIncomeStats();
@@ -950,6 +995,120 @@
       if (!isMainBase) shopTab = 'База';
       isShopOpen = true; shopElement.className = ''; renderShop(true); 
     }
+    
+    function togglePhone() {
+      if (isGameOver) return;
+      if (isPhoneOpen) {isPhoneOpen = false; phoneModal.className = 'hidden'; return;}
+      isPhoneOpen = true; 
+      phoneModal.className = '';
+
+      renderPhone(true);
+    }
+
+    function toggleDetecterDepth() {
+      showDetecterDepth = !showDetecterDepth
+      renderPhone(true);
+    }
+
+    function toggleOxygenZone() {
+      showOxygenZone = !showOxygenZone
+      renderPhone(true);
+    }
+
+    function toggleOxygenCost() {
+      showOxygenCost = !showOxygenCost
+      renderPhone(true);
+    }
+
+    let lastPhoneHtml = ''
+    function renderPhone(force) {
+      const UPGRADES_CONFIG = [
+        { id: 'detecter_depth', label: 'детектор глубины',      isActive: showDetecterDepth },
+        { id: 'oxygen_zone',    label: 'безопасную зону',       isActive: showOxygenZone },
+        { id: 'oxygen_cost',    label: 'потребление кислорода', isActive: showOxygenCost }
+      ];
+
+      let html = `<div class="container">
+        <div class="phone-speaker"></div>
+        <div class="phone-screen">
+          <div class="phone-status"><span>Телефон</span><span>▮▮▮</span></div>
+          <div class="phone-content">`;
+
+      if (avaliablePhoneUpgrades.length > 1 || devModeEnabled) {
+        for (const config of UPGRADES_CONFIG) {
+          if (avaliablePhoneUpgrades.includes(config.id) || devModeEnabled) {
+            const buttonText = config.isActive ? 'Скрыть' : 'Показывать';
+            html += `<button id="toggle_${config.id}" class="phone-app ${config.isActive ? 'on' : ''}">
+              <span class="phone-app-text">${buttonText} ${config.label}</span>
+              <span class="phone-switch"></span>
+            </button>`;
+          }
+        }
+      } else {
+        html += `<div class="phone-empty">
+          <div>Тут можно включать вспомогательные функции, которые ты будешь находить по мере продвижения в мире!</div>
+          <div class="phone-hint">«T», чтобы открыть телефон</div>
+        </div>`;
+      }
+
+      html += `</div>
+          <div class="phone-footer">Закрыть: T / Escape</div>
+        </div>
+        <div class="phone-home"></div>
+      </div>`;
+
+      if (force || html !== lastPhoneHtml) {
+        phoneModal.innerHTML = html;
+        lastPhoneHtml = html;
+      }
+    }
+
+    function getNearbyPhoneUpgrade() {
+      const cx = playerCenterX();
+      const cy = playerCenterY();
+      const interactRadius = 50;
+
+      for (const upgrade of phoneUpgrades) {
+        const dx = cx - upgrade.x;
+        const dy = cy - upgrade.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < interactRadius) {
+          return upgrade; // Возвращаем ближайший (или первый попавшийся)
+        }
+      }
+      return null; // Ничего рядом нет
+    }
+
+    function activateAltar() {
+      const nearby = getNearbyPhoneUpgrade();
+      
+      if (nearby) {
+        playAltarActivation();
+
+        avaliablePhoneUpgrades.push(nearby.id);
+        activateNewUpgrade(nearby.id);
+        togglePhone();
+
+        const index = phoneUpgrades.indexOf(nearby);
+        if (index !== -1) {
+          phoneUpgrades.splice(index, 1);
+        }
+      }
+    }
+
+    function activateNewUpgrade(id) {
+      if (id === 'detecter_depth') {
+        showDetecterDepth = true;
+      } else if (id === 'oxygen_zone') {
+        showOxygenZone = true;
+      } else if (id === 'oxygen_cost') {
+        showOxygenCost = true;
+      } else if (id === 'open_phone') {
+        canOpenPhone = true;
+      }
+    }
+
 
     function damagePlayer(amount) {
       const finalDamage = amount * (1 - player.armor);
@@ -1715,7 +1874,7 @@
       selectBiome(biomeId);
       toggleDirtModal();
     });
-  
+
     function renderDirtModal(force) {
       let planetsHtml = '';
       for (const biome of BIOMES) {
@@ -1779,6 +1938,10 @@
       return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
     }
 
+    function updateHelpPanel() {
+      document.getElementById('toggle_world').classList.toggle('hidden', !devModeEnabled);
+    }
+
     // Верхняя панель со статами
     function updateHud() {
       const expeditionText = isMainBase ? '' : 'Время экспедиции: <b>' + formatMinutesSeconds(expedition_time_left) + '</b>'
@@ -1810,7 +1973,10 @@
       if (event.code === 'Escape' && isShopOpen) { toggleShop();  return; }
       if (event.code === 'KeyB') toggleShop();
       if (event.code === 'Escape' && isDirtWindowOpen) { toggleDirtModal(); return; }
-      if (event.code === 'KeyH') showHitboxes = !showHitboxes;;
+      if (event.code === 'KeyH') showHitboxes = !showHitboxes;
+      if (event.code === 'KeyT' && (canOpenPhone || devModeEnabled)) togglePhone();
+      if (event.code === 'Escape' && isPhoneOpen) { togglePhone();  return; }
+      if (event.code === 'KeyE') { activateAltar(); return; }
     });
     addEventListener('keyup', event => {keysDown[event.code] = false;});
 
@@ -1825,6 +1991,29 @@
     const dirtButton = document.getElementById('dirtButton');
     dirtButton.onmousedown = event => event.preventDefault();
     dirtButton.addEventListener('click', () => { toggleDirtModal(); });
+
+    const phoneModal = document.getElementById('phoneModal');
+    phoneModal.addEventListener('click', (e) => {
+      const buttonDetecterDepth = e.target.closest('#toggle_detecter_depth');
+      if (!buttonDetecterDepth) return;
+      e.preventDefault();
+      toggleDetecterDepth();  
+    });
+
+    phoneModal.addEventListener('click', (e) => {
+      const buttonOxygenZone = e.target.closest('#toggle_oxygen_zone');
+      if (!buttonOxygenZone) return;
+      e.preventDefault();
+      toggleOxygenZone();   
+    });
+
+
+    phoneModal.addEventListener('click', (e) => {
+      const buttonOxygenCost = e.target.closest('#toggle_oxygen_cost');
+      if (!buttonOxygenCost) return;
+      e.preventDefault();
+      toggleOxygenCost();   
+    });
 
     function updateMousePosition(event) {
       const rect = canvas.getBoundingClientRect();
@@ -1859,6 +2048,7 @@
     document.getElementById('okc').onclick = () => {                                                          // инструмент разработчика
       if (devCodeInput.value.trim() === DEV_CODE) {
         devModeEnabled = !devModeEnabled;
+        updateHelpPanel();
         if (devModeEnabled) {
           tempVisibleShopItems = visibleShopItems
           visibleShopItems = SHOP_TABS
@@ -1876,7 +2066,7 @@
       const dt = Math.min(0.05, realDelta);
       lastFrameTime = now;
       updateFps(realDelta);
-      if (!isGameOver && !isChartOpen && !isShopOpen) updateGame(dt);
+      if (!isGameOver && !isChartOpen && !isShopOpen && !isPhoneOpen) updateGame(dt);
       render();
       hudTimer -= dt;
       if (hudTimer <= 0) {updateHud(); hudTimer = 0.15;}

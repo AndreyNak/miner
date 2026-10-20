@@ -408,3 +408,88 @@ function playBowShot() {
 
     arrowNoise.start(t + 0.015);
 }
+
+
+let altarAudioCtx;
+
+function playAltarActivation() {
+  if (!altarAudioCtx) {
+      altarAudioCtx = new (
+          window.AudioContext || window.webkitAudioContext
+      )();
+  }
+
+  const ctx = altarAudioCtx;
+
+  if (ctx.state === "suspended") {
+      ctx.resume();
+  }
+
+  const t = ctx.currentTime;
+
+  // 1. Глубокий магический гул
+  const drone = ctx.createOscillator();
+  const droneGain = ctx.createGain();
+  const droneFilter = ctx.createBiquadFilter();
+
+  drone.type = "sine";
+  drone.frequency.setValueAtTime(65, t);
+  drone.frequency.exponentialRampToValueAtTime(110, t + 0.7);
+  drone.frequency.exponentialRampToValueAtTime(80, t + 1.5);
+
+  droneFilter.type = "lowpass";
+  droneFilter.frequency.value = 300;
+
+  droneGain.gain.setValueAtTime(0.001, t);
+  droneGain.gain.linearRampToValueAtTime(0.35, t + 0.5);
+  droneGain.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+
+  drone.connect(droneFilter);
+  droneFilter.connect(droneGain);
+  droneGain.connect(ctx.destination);
+
+  drone.start(t);
+  drone.stop(t + 1.65);
+
+  // 2. Магический энергетический импульс
+  const pulse = ctx.createOscillator();
+  const pulseGain = ctx.createGain();
+
+  pulse.type = "triangle";
+  pulse.frequency.setValueAtTime(180, t + 0.25);
+  pulse.frequency.exponentialRampToValueAtTime(520, t + 0.8);
+  pulse.frequency.exponentialRampToValueAtTime(260, t + 1.1);
+
+  pulseGain.gain.setValueAtTime(0.001, t + 0.25);
+  pulseGain.gain.linearRampToValueAtTime(0.2, t + 0.65);
+  pulseGain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+
+  pulse.connect(pulseGain);
+  pulseGain.connect(ctx.destination);
+
+  pulse.start(t + 0.25);
+  pulse.stop(t + 1.25);
+
+  // 3. Кристальный звон в момент активации
+  [523.25, 659.25, 783.99].forEach((freq, i) => {
+      const start = t + 0.65 + i * 0.09;
+
+      const bell = ctx.createOscillator();
+      const bellGain = ctx.createGain();
+
+      bell.type = "sine";
+      bell.frequency.value = freq;
+
+      bellGain.gain.setValueAtTime(0.001, start);
+      bellGain.gain.linearRampToValueAtTime(0.12, start + 0.015);
+      bellGain.gain.exponentialRampToValueAtTime(
+          0.001, start + 1.1
+      );
+
+      bell.connect(bellGain);
+      bellGain.connect(ctx.destination);
+
+      bell.start(start);
+      bell.stop(start + 1.15);
+  });
+}
