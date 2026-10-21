@@ -163,12 +163,12 @@
     const formatPercent = value => Math.round(value * 100) + '%';
     const UPGRADES = {
       energy: {
-        title: 'Энергия', steps: [[25, 50], [150, 100], [1000, 220], [8000, 480], [30000, 750]],
+        title: 'Энергия', steps: [[25, 50], [150, 100], [1000, 220], [8000, 480], [45000, 750]],
         describe: () => 'Макс. энергия: ' + player.maxEnergy, format: v => v,
         apply: v => {player.maxEnergy = v; player.energy = v;}
       },
       energyRegen: {
-        title: 'Регенерация энергии', steps: [[25, 2], [200, 4], [1000, 9], [7500, 15], [35000, 32], [100000, 65]],
+        title: 'Регенерация энергии', steps: [[25, 2], [200, 4], [1000, 9], [7500, 15], [55000, 32], [100000, 65]],
         describe: () => 'Сейчас ' + player.energyRegen + '/сек вне базы', format: v => v + '/сек',
         apply: v => player.energyRegen = v
       },
@@ -259,7 +259,7 @@
         apply : v => baseState.miningRate = v
       },
       turret: {
-        title: 'Орудие базы', steps: [[500, 1], [1500, 2], [6000, 3], [25000, 4]],
+        title: 'Орудие базы', steps: [[500, 1], [1500, 2], [6000, 3], [100000, 4]],
         describe: () => baseState.turretLevel ? 'Ур. ' + baseState.turretLevel + ': урон ' + TURRET_LEVELS[baseState.turretLevel].damage + ', 1 выстрел/' + TURRET_LEVELS[baseState.turretLevel].cooldown + 'с' : 'Не построено',
         format: v => 'ур. ' + v + ' (урон ' + TURRET_LEVELS[v].damage + ', 1/' + TURRET_LEVELS[v].cooldown + 'с)',
         apply: v => baseState.turretLevel = v
@@ -275,7 +275,7 @@
         apply: v => baseState.fuelRegen = v
       },
       maxExpeditionTime: {
-        title: 'Время экспедиции', steps: [[85000, 240], [200000, 480]],
+        title: 'Время экспедиции', steps: [[85000, 180], [200000, 280]],
         describe: () => 'Сейчас ' + formatMinutesSeconds(baseState.maxExpeditionTime), format: v => formatMinutesSeconds(v),
         apply: v => { baseState.maxExpeditionTime = v; expedition_time_left = v }
       }
@@ -802,6 +802,7 @@
 
       blocks = [];
       blockDurability = [];
+      ladders = [];
       explored = [];
       floorTiles = [];
       enemies = [];
@@ -1422,6 +1423,8 @@
 
     function startBossFight() {
       bossFightActive = true;
+
+      showMessage('Босс слайм пробудился!');
   
       const enemyCounts = [0, 0, 15];
       spawnQueue = [];

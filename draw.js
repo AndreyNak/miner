@@ -602,7 +602,7 @@ function drawItemIcon(item, x, y) {
     ctx.fillRect(x + 20, y + 10, 5, 20);                           // лезвие
     ctx.fillStyle = '#6b3f20'; ctx.fillRect(x + 15, y + 30, 15, 4); ctx.fillRect(x + 20, y + 34, 5, 6);   // гарда и рукоять
   } else if (item.kind === 'weapon' && item.family === 'range') {
-    ctx.fillStyle = '#d9a65a';
+    ctx.fillStyle = item.color;
 
     // Дуга лука
     ctx.fillRect(x + 16, y + 10, 4, 3);

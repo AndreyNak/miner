@@ -148,8 +148,9 @@ const WEAPONS = [
   { name: 'Каменный меч', family: 'melee', tier: 3, damage: 10, cooldown: 0.8, energyCost: 15, radiusTiles: 2, cost: 500, color: '#a9b0b8' },
   { name: 'Железный меч', family: 'melee', tier: 4, damage: 18, cooldown: 0.7, energyCost: 23, radiusTiles: 2, cost: 3000, color: '#e0e0ea' },
   { name: 'Кристальный меч', family: 'melee', tier: 5, damage: 35, cooldown: 0.6, energyCost: 40, radiusTiles: 2, cost: 10000, color: '#4fd8e8' },
-  { name: 'Деревянный лук', family: 'range', tier: 1, damage: 20, cooldown: 1.2, energyCost: 40, radiusTiles: 50, cost: 25000, color: '#d9a65a' },
+  { name: 'Деревянный лук', family: 'range', tier: 1, damage: 25, cooldown: 1.2, energyCost: 40, radiusTiles: 50, cost: 25000, color: '#d9a65a' },
   { name: 'Золотой меч', family: 'melee', tier: 6, damage: 45, cooldown: 0.6, energyCost: 50, radiusTiles: 2, cost: 60000, color: '#f9d267' },
+  { name: 'железный лук', family: 'range', tier: 2, damage: 30, cooldown: 1, energyCost: 60, radiusTiles: 50, cost: 100000, color: '#a19c93' },
   { name: 'Кобальтовый меч', family: 'melee', tier: 7, damage: 90, cooldown: 1, energyCost: 90, radiusTiles: 2, cost: 150000, color: '#25538e' },
 ];
 
