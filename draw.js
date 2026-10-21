@@ -796,6 +796,18 @@ function drawHitboxes() {
   if (!showHitboxes) return;
   ctx.lineWidth = 1;
 
+  //  радиус оружия
+  const cx = playerCenterX();
+  const cy = playerCenterY();
+  const attackRadius = WEAPONS[player.weaponIndex].radiusTiles * TILE_SIZE;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, attackRadius, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 152, 0, 0.1)'; // Оранжевая полупрозрачная заливка
+  ctx.fill();
+  ctx.strokeStyle = '#ff9800'; // Оранжевая обводка
+  ctx.stroke();
+
   // хитбоксы врагов
   for (const enemy of enemies) {
     const rect = getEnemyRect(enemy);

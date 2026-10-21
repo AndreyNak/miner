@@ -149,8 +149,8 @@ const WEAPONS = [
   { name: 'Железный меч', family: 'melee', tier: 4, damage: 18, cooldown: 0.7, energyCost: 23, radiusTiles: 2, cost: 3000, color: '#e0e0ea' },
   { name: 'Кристальный меч', family: 'melee', tier: 5, damage: 35, cooldown: 0.6, energyCost: 40, radiusTiles: 2, cost: 10000, color: '#4fd8e8' },
   { name: 'Деревянный лук', family: 'range', tier: 1, damage: 20, cooldown: 1.2, energyCost: 40, radiusTiles: 50, cost: 25000, color: '#d9a65a' },
-  { name: 'Золотой меч', family: 'melee', tier: 6, damage: 45, cooldown: 0.6, energyCost: 50, radiusTiles: 2, cost: 30000, color: '#f9d267' },
-  { name: 'Кобальтовый меч', family: 'melee', tier: 7, damage: 90, cooldown: 1.2, energyCost: 90, radiusTiles: 2, cost: 100000, color: '#25538e' },
+  { name: 'Золотой меч', family: 'melee', tier: 6, damage: 45, cooldown: 0.6, energyCost: 50, radiusTiles: 2, cost: 60000, color: '#f9d267' },
+  { name: 'Кобальтовый меч', family: 'melee', tier: 7, damage: 90, cooldown: 1, energyCost: 90, radiusTiles: 2, cost: 150000, color: '#25538e' },
 ];
 
 
@@ -181,7 +181,7 @@ const ENEMY_TYPES = [
   { hp: 10, damage: 15, speed: 18, width: 16, height: 12, points: 20, color: "#3f6fe0", shadeColor: "#2a4aa0", kind: 'slime' }, // синий
   { hp: 30, damage: 35, speed: 20, width: 16, height: 12, points: 60, color: "#deb63e", shadeColor: "#6f5b1e", kind: 'slime' },    // желтый
   { hp: 1300, damage: 100, speed: 15, width: 80, height: 60, points: 15000, color: "#461b6a", shadeColor: "#311349", kind: 'slimeBoss' }, // босс слайм
-  { hp: 35, damage: 20, speed: 22, width: 18, height: 16, points: 80, color: "#303452", shadeColor: "#311349", kind: 'bat' }, // летучая мышь
+  { hp: 20, damage: 50, speed: 25, width: 18, height: 16, points: 80, color: "#303452", shadeColor: "#311349", kind: 'bat' }, // летучая мышь
 ];
 
 const SLIME_VALLEY_CAVE_ENEMY_LAYERS = [
@@ -248,7 +248,7 @@ const PHONE_UPGRADES = [
 // Какие улучшения показывать на вкладках магазина
 const SHOP_TABS = {
   'Персонаж': ['energy', 'energyRegen', 'energySaving', 'maxHp', 'hpRegen', 'armor', 'maxOxygen', 'oxygenRegen', 'oxygenFreeDepth', 'moveSpeed', 'jumpPower', 'luck', 'teleportCooldown'],
-  'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret', 'maxFuel', 'fuelRegen'],
+  'База': ['baseEnergyRegen', 'baseHealRate', 'baseMaxHp', 'baseRepair', 'baseMining', 'turret', 'maxFuel', 'fuelRegen', 'maxExpeditionTime'],
   'Расходники': ['ladder', 'dynamite', 'dynamiteUpgrade', 'bossSlime']
 };
 

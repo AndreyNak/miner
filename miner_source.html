@@ -166,7 +166,7 @@
         apply: v => {player.maxEnergy = v; player.energy = v;}
       },
       energyRegen: {
-        title: 'Регенерация энергии', steps: [[25, 2], [200, 4], [1000, 9], [7500, 15], [35000, 20]],
+        title: 'Регенерация энергии', steps: [[25, 2], [200, 4], [1000, 9], [7500, 15], [35000, 32], [100000, 65]],
         describe: () => 'Сейчас ' + player.energyRegen + '/сек вне базы', format: v => v + '/сек',
         apply: v => player.energyRegen = v
       },
@@ -211,7 +211,7 @@
         apply: v => player.moveSpeed = v
       },
       jumpPower: {
-        title: 'Высота прыжка', steps: [[80, 320], [600, 360], [3000, 400]],
+        title: 'Высота прыжка', steps: [[80, 320], [1000, 340], [6000, 360]],
         describe: () => 'Сейчас ' + player.jumpPower, format: v => v,
         apply: v => player.jumpPower = v
       },
@@ -268,9 +268,14 @@
         apply: v => baseState.maxFuel = v
       },
       fuelRegen: {
-        title: 'Регенерация Топлива', steps: [[150000, 1], [400000, 2]],
+        title: 'Регенерация Топлива', steps: [[120000, 1], [250000, 2]],
         describe: () => 'Сейчас ' + baseState.fuelRegen + '/сек', format: v => v + '/сек',
         apply: v => baseState.fuelRegen = v
+      },
+      maxExpeditionTime: {
+        title: 'Время экспедиции', steps: [[85000, 240], [200000, 480]],
+        describe: () => 'Сейчас ' + formatMinutesSeconds(baseState.maxExpeditionTime), format: v => formatMinutesSeconds(v),
+        apply: v => { baseState.maxExpeditionTime = v; expedition_time_left = v }
       }
     };
 
@@ -292,6 +297,7 @@
       ['База',        'turret',           () => waveNumber === 4],
       ['База',        'maxFuel',          () => bossSlimeDead === true],
       ['База',        'fuelRegen',        () => bossSlimeDead === true],
+      ['База',        'maxExpeditionTime',() => expedition_time_left < 1],
       ['Расходники', 'ladder',            () => getDepthPlayer() > 2],
       ['Расходники', 'dynamite',          () => getDepthPlayer() > 35],
       ['Расходники', 'dynamiteUpgrade',   () => getDepthPlayer() > 80],
@@ -592,7 +598,6 @@
       generateBlocks();
       generateCaves();
       generateFloorTiles();
-      spawnPhoneUpgrades();
     }
 
     function createPlayer() {
@@ -757,14 +762,16 @@
       current_planet = 'earth';
       current_biome = 'slime_valley';
       main_biome = 'slime_valley';
+      expedition_time_left = 120;
       avaliablePhoneUpgrades = [];
       canOpenPhone = false; showDetecterDepth = false; showOxygenZone = false; showOxygenCost = false;
       createBlockTextures();
       generateWorld();
+      spawnPhoneUpgrades();
       createPlayer();
       points = 0;
       upgradeLevels = {};
-      baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0, maxFuel: 50, fuelRegen: 0.5, fuel: 0};
+      baseState = {hp: 500, maxHp: 500, energyRegen: 10, playerHealRate: 10, repairRate: 0, miningRate: 0, turretLevel: 0, maxFuel: 50, fuelRegen: 0.5, fuel: 0, maxExpeditionTime: 120};
       miniBaseState = {hp: 500, maxHp: 500, energyRegen: 25, playerHealRate: 12}
       floatingTexts = [];
       canSummonSlimeBoss = false;
@@ -783,11 +790,11 @@
       revealAroundPlayer();
     }
 
-    function selectBiome (biome = 'slime_valley') {
-      player.x = STAR_POSITION_PLAYER.x, player.y = STAR_POSITION_PLAYER.y;
-      
+    function selectBiome (biome = 'slime_valley') {      
       if (biome == current_biome) return;
-      if (!isMainBase) expedition_time_left = 120;
+
+      player.x = STAR_POSITION_PLAYER.x, player.y = STAR_POSITION_PLAYER.y;
+      if (!isMainBase) expedition_time_left = baseState.maxExpeditionTime;
 
       if (biome == 'slime_valley') {
         current_biome = biome;
@@ -895,7 +902,6 @@
       stack.count--;
       if (stack.count <= 0) player.inventory[player.selectedSlot] = null;
       startBossFight();
-      startWave();
     }
 
     function getDynamiteStats() { return DYNAMITE_LEVELS[upgradeLevels.dynamite || 0]; }
@@ -1037,9 +1043,8 @@
       if (avaliablePhoneUpgrades.length > 1 || devModeEnabled) {
         for (const config of UPGRADES_CONFIG) {
           if (avaliablePhoneUpgrades.includes(config.id) || devModeEnabled) {
-            const buttonText = config.isActive ? 'Скрыть' : 'Показывать';
             html += `<button id="toggle_${config.id}" class="phone-app ${config.isActive ? 'on' : ''}">
-              <span class="phone-app-text">${buttonText} ${config.label}</span>
+              <span class="phone-app-text">${config.label}</span>
               <span class="phone-switch"></span>
             </button>`;
           }
@@ -1341,27 +1346,27 @@
           slime_valley: {
             1: [5, 0, 0], 2: [10, 0, 0], 3: [13, 2, 0],
             4: [15, 5, 0], 5: [20, 10, 1], 6: [25, 15, 3],
-            7: [25, 20, 6]
+            7: [25, 20, 6], 8: [10, 30, 12], 9: [5, 35, 18],
+            10: [0, 25, 25], 11: [0, 10, 30], 12: [0, 0, 45]
           },
 
           sand_dunes: {
-            1: [0, 10, 10, 0, 5], 2: [15, 15, 7], 3: [25, 20, 10],
-            4: [25, 30, 12], 5: [30, 30, 15], 6: [10, 45, 18],
-            7: [0, 70, 25]
+            1: [0, 15, 10], 2: [0, 15, 20, 0, 5], 3: [0, 10, 25, 0, 7],
+            4: [0, 15, 30, 0, 12], 5: [0, 15, 35, 0, 17], 6: [0, 10, 40, 0, 20],
+            7: [0, 0, 50, 0, 25], 8: [0, 0, 50, 0, 30], 9: [0, 0, 50, 0, 40], 
+            9: [0, 0, 50, 0, 50]
           },
 
       };
 
-      if (bossFightActive) return [0, 0, 15]
+      
       if (count_enemies[current_biome][wave]) return count_enemies[current_biome][wave];
 
-      const extra  = wave - 7;
+      const extra  = wave - 10;
 
-      const green_slimes_count = Math.round(25 + 3  * Math.pow(extra , 1.1));
-      const blue_slimes_count = Math.round(20 + 4  * Math.pow(extra , 1.15));
-      const yellow_slimes_count = Math.round(6  + 1.5 * Math.pow(extra , 1.5));
+      const yellow_slimes_count =  45 + (5 * extra)
 
-      return [green_slimes_count, blue_slimes_count, yellow_slimes_count];
+      return [0, 0, yellow_slimes_count];
     }
 
     function getWaveBonus(wave) {
@@ -1396,33 +1401,48 @@
 
     function startBossFight() {
       bossFightActive = true;
-      const boss_delay_width = 100;
-
-      ENEMY_TYPES[BOSS_SLIME].width
-
+  
+      const enemyCounts = [0, 0, 15];
       spawnQueue = [];
-      spawnQueue.push(BOSS_SLIME);
-      const fromLeft = Math.random() < 0.5;
-      enemies.push(createEnemy(
-        spawnQueue.pop(),
-        fromLeft ? - (ENEMY_TYPES[BOSS_SLIME].width / 2) - boss_delay_width : WORLD_WIDTH * TILE_SIZE + (ENEMY_TYPES[BOSS_SLIME].width / 2) + boss_delay_width,
-        GROUND_Y,
-        false
-      ))
+      for (let i = 0; i < enemyCounts.length; i++) {
+        const count = enemyCounts[i];
+        for (let j = 0; j < count; j++) spawnQueue.push(i);
+      }
+      
+      spawnQueue.sort(() => Math.random() - 0.5);
+      spawnTimer = 0;
+  
+      spawnQueue.splice(14, 0, BOSS_SLIME);
     }
 
     function spawnWaveEnemy() {
-      const hpMultiplier = 1 + 0.1 * Math.max(0, waveNumber - 3);        // с 4-й волны слизни крепчают
-      const fromLeft = Math.random() < 0.5;
       const indexEnemy = spawnQueue.pop();
-      enemies.push(createEnemy(indexEnemy, fromLeft ? - ENEMY_TYPES[indexEnemy].width / 2 : WORLD_WIDTH * TILE_SIZE + ENEMY_TYPES[indexEnemy].width / 2, ENEMY_TYPES[indexEnemy].kind === 'bat' ? GROUND_Y - 100 :GROUND_Y, false, hpMultiplier));
+      const growthRate = 0.1; // 10% за волну
+      const baseGrowth = Math.max(0, waveNumber - 3); // Базовое усиление: начинается с 4-й волны (как было)
+      const extraGrowth = Math.max(0, waveNumber - 10); // Дополнительное усиление: начинается с 11-й волны (и удваивает скорость роста)
+      const hpMultiplier = indexEnemy === BOSS_SLIME ? 1 : 1 + growthRate * (baseGrowth + extraGrowth)
+      const fromLeft = Math.random() < 0.5; 
+      enemies.push(createEnemy(indexEnemy, fromLeft ? - ENEMY_TYPES[indexEnemy].width / 2 : WORLD_WIDTH * TILE_SIZE + ENEMY_TYPES[indexEnemy].width / 2, ENEMY_TYPES[indexEnemy].kind === 'bat' ? GROUND_Y - 130 :GROUND_Y, false, hpMultiplier));
     }
 
     function countWaveEnemiesLeft() {return enemies.filter(e => !e.isCaveSlime).length;}
     function deleteWaveEnemies() {enemies = enemies.filter(e => e.isCaveSlime)}
 
+
+    function updateBossFight(dt) {
+      if (!bossFightActive) return;
+      spawnTimer -= dt;
+
+      if (spawnQueue.length && spawnTimer <= 0) {spawnWaveEnemy(); spawnTimer = SPAWN_INTERVAL_SEC;}
+      if (!spawnQueue.length && countWaveEnemiesLeft() === 0) {  
+        bossFightActive = false;
+        bossSlimeDead = true;
+        showMessage('Босс побежден!');
+      }
+    }
+
     function updateWaves(dt) {
-      if (!waveActive) {
+      if (!waveActive && !bossFightActive) {
         waveTimer -= dt;
         if (waveTimer <= 0) startWave();
         return;
@@ -1436,16 +1456,6 @@
         points += bonus;
         logWaveCleared(waveNumber);
         showMessage('Волна ' + waveNumber + ' отбита! Награда +' + bonus);
-      }
-    }
-
-    function updateBossFight() {
-      if (!bossFightActive) return;
-
-      if (!spawnQueue.length && countWaveEnemiesLeft() === 0) {           // босс погиб
-        bossFightActive = false;
-        bossSlimeDead = true;
-        showMessage('Босс побежден!');
       }
     }
 
@@ -1599,7 +1609,7 @@
         deleteWaveEnemies();
         backToMainBase();
         showMessage('Базу экспедиции сломали!');
-        expedition_time_left = 120;
+        expedition_time_left = baseState.maxExpeditionTime;
       }
     }
 
@@ -1608,7 +1618,7 @@
       if (waveActive) return;
       expedition_time_left -= dt;
       if (expedition_time_left <= 0) {
-        expedition_time_left = 120;
+        expedition_time_left = baseState.maxExpeditionTime;
         backToMainBase();
         showMessage('Время экспедиции закончилось!');
       }
@@ -1671,7 +1681,7 @@
       updateTurret(dt);
       updateCaveRespawn(dt);
       updateWaves(dt);
-      updateBossFight();
+      updateBossFight(dt);
       updateIncomeStats(dt);
       updateExpeditionTime(dt);
       updateProjectile(dt)
@@ -1831,7 +1841,7 @@
             items.splice(8, 0, fuelItem);     
           }
         } else {
-          const makeMainBase = { title: 'Сделать эту базу Основной', description: 'Предыдущая база и биом перестанет быть основными!', cost: 150000, state: 'buy', onBuy: () => {getMainBase().biome.isMainBase = false; isMainBase = true; main_biome = current_biome;} }
+          const makeMainBase = { title: 'Сделать эту базу Основной', description: 'Предыдущая база и биом перестанет быть основными!', cost: 500000, state: 'buy', onBuy: () => {getMainBase().biome.isMainBase = false; isMainBase = true; main_biome = current_biome;} }
           return [makeMainBase]
         }
       }
@@ -1843,7 +1853,7 @@
     function renderShop(force) {
       currentShopItems = getShopItems();
       let html = '<div class="tabs">' + getShopTabs().map(name => '<button data-tab="' + name + '" class="' + (name === shopTab ? 'on' : '') + '">' + name + '</button>').join('')
-        + '<span style="margin-left:auto">Очки: <b style="color:var(--ac)">' + Math.floor(points) + '</b>' + (devModeEnabled ? ' · DEV' : '') + '</span></div>';
+        + '<span style="margin-left:auto">Очки: <b style="color:var(--ac)">' + approximateNumber(Math.floor(points)) + '</b>' + (devModeEnabled ? ' · DEV' : '') + '</span></div>';
       if (currentShopItems.length === 0) {
         html += '<div class="it empty"><div>Еще чу-чуть и тут что-то появится!<small>Продолжай играть — товары откроются сами.</small></div></div>';
       } else {
