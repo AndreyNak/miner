@@ -18,7 +18,8 @@
         <button id="okc">OK</button>
     </div>
     <button id="teleportButton" title="Телепорт на базу (F)"><span class="inner" id="teleportLabel"></span></button>
-    <button id="dirtButton" class="hidden" title="Земля"></button>
+    <button id="regenerateButton" class="hidden" title="Обновить мир"><span class="inner">⟳</span></button>
+    <button id="dirtButton" class="hidden" title="Биобы"></button>
     <div id="modal" class="h"></div>
     <div id="dirtModal" class="hidden"></div>
     <div id="phoneModal" class="hidden"></div>
@@ -29,7 +30,8 @@
   <div id="help">A/D — ходить · W/Пробел — прыжок · ПКМ — копать · ЛКМ — бить оружием · F — телепорт на базу · B —
     магазин (на базе) · G - график · 
     <button id="callw">Позвать волну сейчас</button>
-    <button id="toggle_world" class="hidden">Сменить мир</button>
+    <button id="toggle_biome" class="hidden">Сменить мир</button>
+    <button id="reload_biome"  class="hidden">Обновить текущий мир</button>
     <button id="toggle_music" title="Музыка">🎵</button>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/approximate-number@2.1.1/lib/approximate-number.js"></script>
@@ -788,6 +790,25 @@
       spawnCaveChests();
       resetIncomeStats();
       revealAroundPlayer();
+    }
+
+    function regenerateBiome() {
+      if (!confirm('Обновить биом?')) return;
+      reloadBiome();
+    }
+
+    function reloadBiome() {
+      player.x = STAR_POSITION_PLAYER.x, player.y = STAR_POSITION_PLAYER.y;
+
+      blocks = [];
+      blockDurability = [];
+      explored = [];
+      floorTiles = [];
+      enemies = [];
+      generateWorld();
+      generateFloorTiles();
+      spawnCaveSlimes();
+
     }
 
     function selectBiome (biome = 'slime_valley') {      
@@ -1661,7 +1682,8 @@
     }
 
     function updateUi() {
-      document.getElementById('dirtButton').classList.toggle('hidden', !bossSlimeDead); 
+      document.getElementById('dirtButton').classList.toggle('hidden', !bossSlimeDead);
+      regenerateButton.classList.toggle('hidden', !bossSlimeDead || current_biome === 'sand_dunes');
     }
 
     function updateGame(dt) {
@@ -1949,7 +1971,8 @@
     }
 
     function updateHelpPanel() {
-      document.getElementById('toggle_world').classList.toggle('hidden', !devModeEnabled);
+      document.getElementById('toggle_biome').classList.toggle('hidden', !devModeEnabled);
+      document.getElementById('reload_biome').classList.toggle('hidden', !devModeEnabled);
     }
 
     // Верхняя панель со статами
@@ -1997,6 +2020,12 @@
 
     teleportButton.onmousedown = event => event.preventDefault();          // кнопка не получает фокус, иначе пробел (прыжок) нажимал бы её
     teleportButton.onclick = () => { if (!isShopOpen && !isGameOver) teleportToBase(); };
+
+    const regenerateButton = document.getElementById('regenerateButton');
+    regenerateButton.addEventListener('click', () => {
+      regenerateBiome();
+      regenerateButton.blur();   // чтобы пробел и другие клавиши не нажимали кнопку повторно
+    });
 
     const dirtButton = document.getElementById('dirtButton');
     dirtButton.onmousedown = event => event.preventDefault();
@@ -2052,7 +2081,8 @@
       player.selectedSlot = (player.selectedSlot + Math.sign(event.deltaY) + SLOT_COUNT) % SLOT_COUNT;
     }, { passive: false });
 
-    document.getElementById('toggle_world').onclick = () => {selectBiome(current_biome === 'slime_valley' ? 'sand_dunes' : 'slime_valley');}; // Тумблер миров
+    document.getElementById('reload_biome').onclick = () => { reloadBiome()};
+    document.getElementById('toggle_biome').onclick = () => {selectBiome(current_biome === 'slime_valley' ? 'sand_dunes' : 'slime_valley');}; // Тумблер миров
     document.getElementById('toggle_music').onclick = () => {  bgMusic.paused ? bgMusic.play() : bgMusic.pause(); }; // Тумблер выключения музыки
     document.getElementById('callw').onclick = () => {if (!waveActive && !isGameOver) waveTimer = 0;};   // позвать волну без ожидания
     document.getElementById('okc').onclick = () => {                                                          // инструмент разработчика
