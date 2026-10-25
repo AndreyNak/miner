@@ -27,8 +27,7 @@
   <div id="chartOverlay" style="display:none;position:fixed;inset:0;z-index:100;background:#0d0f14">
     <canvas id="incomeChart" style="display:block;width:100%;height:100%"></canvas>
   </div>
-  <div id="help">A/D — ходить · W/Пробел — прыжок · ПКМ — копать · ЛКМ — бить оружием · F — телепорт на базу · B —
-    магазин (на базе) · G - график · 
+  <div id="help">F — телепорт на базу · B — магазин (на базе) · G — график
     <button id="callw">Позвать волну сейчас</button>
     <button id="toggle_biome" class="hidden">Сменить мир</button>
     <button id="reload_biome"  class="hidden">Обновить текущий мир</button>
@@ -327,7 +326,7 @@
         if (visibleShopItems[category].includes(key)) continue;
         if (!condition()) continue;
         visibleShopItems[category].push(key);
-        showToast(getTitleFor(category, key), { type: 'info' });
+        showToast(getTitleFor(category, key), { type: 'info', title: category });
       }
 
       for (const category in visibleShopItems) {
@@ -352,7 +351,6 @@
           if (biome.isMainBase) return { worldName, biomeName, biome };
         }
       }
-      throw new Error('Main base not found — проверь isMainBase');
     }
 
     const WORLD_FIELDS = [
@@ -369,7 +367,7 @@
       'turretBeams',      // вспышки выстрелов орудия базы
       'waveNumber',
       'waveActive',
-      'waveTimer',
+      'waveTimer',        // через сколько начнется волна
       'isMainBase',
     ];
 
@@ -433,9 +431,7 @@
         }
       },
       mars: {
-        biomes: {
-
-        }
+        biomes: {}
       }
     };
 
@@ -485,17 +481,6 @@
         height: enemy.height
       };
     }
-
-    function updateFps(realDeltaSec) {
-      fpsFrameCount++;
-      fpsTimer += realDeltaSec;
-      if (fpsTimer >= 0.5) {
-        fps = Math.round(fpsFrameCount / fpsTimer);
-        fpsFrameCount = 0;
-        fpsTimer = 0;
-      }
-    }
-
 
     function isSolidTile(col, row) {
       if (col < 0 || col >= WORLD_WIDTH || row >= WORLD_HEIGHT) return true;   // стены и дно мира
@@ -1052,7 +1037,7 @@
     function renderPhone(force) {
       const UPGRADES_CONFIG = [
         { id: 'detecter_depth', label: 'детектор глубины',      isActive: showDetecterDepth },
-        { id: 'oxygen_zone',    label: 'безопасную зону',       isActive: showOxygenZone },
+        { id: 'oxygen_zone',    label: 'безопасная зона',       isActive: showOxygenZone },
         { id: 'oxygen_cost',    label: 'потребление кислорода', isActive: showOxygenCost }
       ];
 
@@ -1323,13 +1308,13 @@
 
     // Ходьба, прыжок, гравитация и столкновения с блоками
     function updatePlayerMovement(dt) {
-      const direction = (keysDown.KeyD || keysDown.ArrowRight ? 1 : 0) - (keysDown.KeyA || keysDown.ArrowLeft ? 1 : 0);
+      const direction = (keysDown.KeyD ? 1 : 0) - (keysDown.KeyA ? 1 : 0);
       player.velocityX = direction * player.moveSpeed;
       if (direction) player.facing = direction;
       const onLadder = isPlayerOnLadder();
-      if (!onLadder && (keysDown.KeyW || keysDown.ArrowUp || keysDown.Space) && player.onGround) { player.velocityY = -player.jumpPower; player.onGround = false; }
+      if (!onLadder && (keysDown.KeyW || keysDown.Space) && player.onGround) { player.velocityY = -player.jumpPower; player.onGround = false; }
       if (onLadder) {
-        // на лестнице гравитации нет: W вверх, S вниз, без нажатия игрок висит (стрелки не работают)
+        // на лестнице гравитации нет: W вверх, S вниз, без нажатия игрок висит
         player.velocityY = ((keysDown.KeyS ? 1 : 0) - (keysDown.KeyW ? 1 : 0)) * LADDER_CLIMB_SPEED;
       } else {
         player.velocityY = Math.min(MAX_FALL_SPEED, player.velocityY + GRAVITY * dt);
@@ -1443,7 +1428,7 @@
       const indexEnemy = spawnQueue.pop();
       const growthRate = 0.1; // 10% за волну
       const baseGrowth = Math.max(0, waveNumber - 3); // Базовое усиление: начинается с 4-й волны (как было)
-      const extraGrowth = Math.max(0, waveNumber - 10); // Дополнительное усиление: начинается с 11-й волны (и удваивает скорость роста)
+      const extraGrowth = Math.max(0, waveNumber - 15); // Дополнительное усиление: начинается с 15-й волны (и удваивает скорость роста)
       const hpMultiplier = indexEnemy === BOSS_SLIME ? 1 : 1 + growthRate * (baseGrowth + extraGrowth)
       const fromLeft = Math.random() < 0.5; 
       enemies.push(createEnemy(indexEnemy, fromLeft ? - ENEMY_TYPES[indexEnemy].width / 2 : WORLD_WIDTH * TILE_SIZE + ENEMY_TYPES[indexEnemy].width / 2, ENEMY_TYPES[indexEnemy].kind === 'bat' ? GROUND_Y - 130 :GROUND_Y, false, hpMultiplier));
@@ -1689,6 +1674,17 @@
       regenerateButton.classList.toggle('hidden', !bossSlimeDead || current_biome === 'sand_dunes');
     }
 
+    function updateFps(realDeltaSec) {
+      fpsFrameCount++;
+      fpsTimer += realDeltaSec;
+      if (fpsTimer >= 0.5) {
+        fps = Math.round(fpsFrameCount / fpsTimer);
+        fpsFrameCount = 0;
+        fpsTimer = 0;
+      }
+    }
+
+
     function updateGame(dt) {
       player.attackTimer -= dt; player.digTimer -= dt; player.teleportTimer -= dt; player.swingAnimTimer -= dt;
       messageTimer -= dt;
@@ -1721,12 +1717,24 @@
 
     /* ======================= 9. МАГАЗИН И ИНТЕРФЕЙС ======================= */
   
-    function showToast(message, { duration = 5000, type = 'info' } = {}) {
+    function showToast(message, { duration = 50000, type = 'info', title = 'Уведомление' } = {}) {
       const container = document.getElementById('toast-container');
 
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
-      toast.textContent = "Новое улучшение: " + message;
+
+      // Создаем заголовок
+      const titleEl = document.createElement('div');
+      titleEl.className = 'toast-title';
+      titleEl.textContent = title; // Например: "Новое улучшение"
+
+      // Создаем основной текст
+      const messageEl = document.createElement('div');
+      messageEl.textContent = 'Новое улучшение: ' + message; 
+
+      // Собираем тост
+      toast.appendChild(titleEl);
+      toast.appendChild(messageEl);
 
       container.appendChild(toast);
 
